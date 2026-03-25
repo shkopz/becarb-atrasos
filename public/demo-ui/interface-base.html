@@ -694,6 +694,32 @@
       margin-bottom: 14px;
     }
 
+    .period-inline {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 14px;
+      align-items: center;
+    }
+
+    .period-select {
+      min-width: 260px;
+      max-width: 100%;
+      border: 1px solid #d8e7f4;
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      background: #fff;
+      outline: none;
+    }
+
+    .period-select:focus {
+      border-color: rgba(29,116,183,0.36);
+      box-shadow: 0 0 0 4px rgba(29,116,183,0.12);
+    }
+
 
     .utility-actions {
       display: flex;
@@ -1302,9 +1328,7 @@
         <div class="login-error" id="loginError">Usuario o clave incorrectos.</div>
 
         <div class="login-hint">
-          <strong>Accesos de prueba:</strong><br>
-          Administrador: <strong>becarito</strong> · Clave: <strong>1234</strong><br>
-          Usuario: <strong>inspector</strong> · Clave: <strong>1234</strong>
+          Acceso restringido a usuarios autorizados del sistema.
         </div>
       </section>
     </div>
@@ -1376,12 +1400,11 @@
                 maxlength="9"
                 autocomplete="off"
                 placeholder="11111111"
-                readonly
               />
             </div>
 
             <div class="helper-row">
-              <div class="helper">Ingresa RUT sin dígito verificador. El sistema acepta 8 o 9 dígitos y el QR funciona igual.</div>
+              <div class="helper">Ingresa o pega el RUT sin dígito verificador. El sistema acepta 8 o 9 dígitos y el QR funciona igual.</div>
             </div>
 
             <div class="keypad" id="keypad"></div>
@@ -1472,14 +1495,8 @@
 
         <div class="stats-grid" id="statsGrid"></div>
 
-        <div class="entry-box">
-          <h3>RUT demo para pruebas</h3>
-          <p>Tócalos para autocompletar el ingreso. Todos están guardados con RUT completo en la base interna.</p>
-          <div class="sample-list" id="sampleList"></div>
-        </div>
-
         <div class="footer-note">
-          Esta demo guarda los movimientos del mes en el navegador del dispositivo usando almacenamiento local. Es ideal para revisar el flujo, no para operación real.
+          Los movimientos del mes siguen guardándose localmente en esta etapa, pero la nómina de alumnos ya se carga desde Google Sheets.
         </div>
       </aside>
     </section>
@@ -1488,7 +1505,7 @@
       <div class="panel-header">
         <div>
           <h2 class="panel-title" id="recentPanelTitle">Últimos accesos del día</h2>
-          <p class="panel-sub">Se muestran los ingresos tomados hoy, normales y con atraso.</p>
+          <p class="panel-sub">Se muestran solo los 10 últimos marcajes tomados hoy.</p>
         </div>
       </div>
       <div class="table-wrap">
@@ -1521,12 +1538,11 @@
       <div class="panel-header">
         <div>
           <h2 class="panel-title">Informe mensual · alumnos con 3 o más atrasos vigentes</h2>
-          <p class="panel-sub">Exporta el informe en formato Excel, copia los correos y simula la notificación final del período activo.</p>
+          <p class="panel-sub">Exporta el informe en formato Excel y simula la notificación final del período activo. Haz click en un correo para copiarlo al portapapeles.</p>
         </div>
       </div>
 
       <div class="report-actions">
-        <button class="btn btn-secondary" id="copyEmailsButton">Copiar correos</button>
         <button class="btn btn-secondary" id="exportEmailsButton">Exportar Excel</button>
         <button class="btn btn-primary" id="simulateSendButton">Enviar notificación simulada</button>
       </div>
@@ -1555,6 +1571,27 @@
         </table>
       </div>
     </section>
+    <section class="panel admin-only" id="periodExportPanel">
+      <div class="panel-header">
+        <div>
+          <h2 class="panel-title">Exportar meses anteriores</h2>
+          <p class="panel-sub">Selecciona un período, incluyendo el mes en curso, para descargar el Excel completo o enviarlo al correo <strong>inspectoria@becarb.cl</strong>.</p>
+        </div>
+      </div>
+
+      <div class="period-inline">
+        <select class="period-select" id="reportPeriodSelect" aria-label="Seleccionar período de informe">
+          <option value="">Cargando períodos...</option>
+        </select>
+        <button class="btn btn-secondary" id="downloadPeriodButton">Descargar Excel</button>
+        <button class="btn btn-primary" id="sendPeriodButton">Enviar al correo</button>
+      </div>
+
+      <div class="status info show" id="periodExportStatusBox">
+        El selector reúne meses con registros y siempre incluye el mes en curso.
+      </div>
+    </section>
+
 
     <section class="panel admin-only" id="auditFooterPanel" style="margin-top:18px;">
       <div class="panel-header">
@@ -1686,24 +1723,19 @@
 
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
-    const students = [
-      { id: 1, rutFull: '11.111.111-1', rutNumber: '11111111', nombres: 'Martina', apellidos: 'González Rojas', curso: '7° Básico A', email: 'martina.gonzalez@becarb.demo' },
-      { id: 2, rutFull: '22.222.222-2', rutNumber: '22222222', nombres: 'Tomás', apellidos: 'Herrera Silva', curso: '1° Medio B', email: 'tomas.herrera@becarb.demo' },
-      { id: 3, rutFull: '33.333.333-3', rutNumber: '33333333', nombres: 'Florencia', apellidos: 'Pizarro Vega', curso: '8° Básico C', email: 'florencia.pizarro@becarb.demo' },
-      { id: 4, rutFull: '44.444.444-4', rutNumber: '44444444', nombres: 'Benjamín', apellidos: 'Soto Pérez', curso: '6° Básico A', email: 'benjamin.soto@becarb.demo' },
-      { id: 5, rutFull: '55.555.555-5', rutNumber: '55555555', nombres: 'Catalina', apellidos: 'Araya Morales', curso: '2° Medio A', email: 'catalina.araya@becarb.demo' },
-      { id: 6, rutFull: '66.666.666-6', rutNumber: '66666666', nombres: 'Vicente', apellidos: 'Navarro Díaz', curso: '5° Básico B', email: 'vicente.navarro@becarb.demo' },
-      { id: 7, rutFull: '77.777.777-7', rutNumber: '777777777', nombres: 'Valentina', apellidos: 'Ramos Díaz', curso: '1° Medio A', email: 'valentina.ramos@becarb.demo' }
-    ];
+    let students = [];
+    let studentsLoaded = false;
+    let studentsLoadError = '';
+    let dashboardSummary = null;
+    let dashboardRecentAccesses = [];
+    let resetLogsData = [];
+    let alertStudentsData = [];
+    let reportPeriodsData = [];
 
-    const USERS = {
-      becarito: { password: '1234', role: 'admin' },
-      inspector: { password: '1234', role: 'user' }
-    };
-    const DEFAULT_USER = 'becarito';
-    const LOGIN_STORAGE_KEY = 'becarb-atrasos-demo:auth';
-    const LOGIN_USERNAME_KEY = 'becarb-atrasos-demo:username';
-    const LOGIN_ROLE_KEY = 'becarb-atrasos-demo:role';
+    const DEFAULT_USER = '';
+    const LOGIN_STORAGE_KEY = 'becarb-atrasos-session:auth';
+    const LOGIN_USERNAME_KEY = 'becarb-atrasos-session:username';
+    const LOGIN_ROLE_KEY = 'becarb-atrasos-session:role';
     const DATA_STORAGE_KEY = 'becarb-atrasos-demo:data:v3';
     const LEGACY_PREFIX = 'becarb-atrasos-demo:';
     const INSPECTORIA_EMAIL = 'inspectoria@becarb.cl';
@@ -1740,9 +1772,12 @@
     const todayTableBody = document.getElementById('todayTableBody');
     const reportTableBody = document.getElementById('reportTableBody');
     const reportStatusBox = document.getElementById('reportStatusBox');
-    const copyEmailsButton = document.getElementById('copyEmailsButton');
     const exportEmailsButton = document.getElementById('exportEmailsButton');
     const simulateSendButton = document.getElementById('simulateSendButton');
+    const reportPeriodSelect = document.getElementById('reportPeriodSelect');
+    const downloadPeriodButton = document.getElementById('downloadPeriodButton');
+    const sendPeriodButton = document.getElementById('sendPeriodButton');
+    const periodExportStatusBox = document.getElementById('periodExportStatusBox');
     const resetStudentButton = document.getElementById('resetStudentButton');
     const resetLogTableBody = document.getElementById('resetLogTableBody');
     const automationTableBody = document.getElementById('automationTableBody');
@@ -1768,6 +1803,8 @@
     let scanLoopActive = false;
     let modalCloseHandler = null;
     let modalCancelHandler = null;
+    let lastFocusedBeforeModal = null;
+    let lastFocusedBeforeResetModal = null;
     let audioContext = null;
 
     const emptyState = () => ({
@@ -1780,7 +1817,7 @@
     const pad2 = (value) => String(value).padStart(2, '0');
     const getDateKey = (date) => `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
     const getMonthKeyFromDate = (date) => `${date.getFullYear()}-${pad2(date.getMonth() + 1)}`;
-    const sanitizeRutNumber = (value) => (value || '').replace(/\D/g, '').slice(0, 8);
+    const sanitizeRutNumber = (value) => (value || '').replace(/\D/g, '').slice(0, 9);
 
     const monthName = (monthNumber) => [
       'enero','febrero','marzo','abril','mayo','junio',
@@ -1795,6 +1832,26 @@
     const previousMonthKey = (date = new Date()) => {
       const d = new Date(date.getFullYear(), date.getMonth() - 1, 1);
       return getMonthKeyFromDate(d);
+    };
+
+    const getNextPeriodFromKey = (key) => {
+      const [year, month] = String(key).split('-').map(Number);
+      if (!year || !month) return null;
+      if (month === 12) return { year: year + 1, month: 1 };
+      return { year, month: month + 1 };
+    };
+
+    const renderReportPeriods = () => {
+      if (!reportPeriodSelect) return;
+
+      if (!reportPeriodsData.length) {
+        reportPeriodSelect.innerHTML = '<option value="">No hay períodos disponibles</option>';
+        return;
+      }
+
+      reportPeriodSelect.innerHTML = reportPeriodsData.map((period) => `
+        <option value="${period.key}" ${period.is_current ? 'selected' : ''}>${period.label}</option>
+      `).join('');
     };
 
     const formatDateLong = (date) => date.toLocaleDateString('es-CL', {
@@ -1886,8 +1943,123 @@
       localStorage.setItem(DATA_STORAGE_KEY, JSON.stringify(normalizeState(state)));
     };
 
-    const currentUser = () => sessionStorage.getItem(LOGIN_USERNAME_KEY) || DEFAULT_USER;
-    const currentRole = () => sessionStorage.getItem(LOGIN_ROLE_KEY) || (USERS[currentUser()]?.role || 'admin');
+    const currentUser = () => sessionStorage.getItem(LOGIN_USERNAME_KEY) || '';
+    const currentRole = () => sessionStorage.getItem(LOGIN_ROLE_KEY) || 'admin';
+
+    const normalizeStudentFromApi = (student, index) => ({
+      id: index + 1,
+      rutFull: student.rut_completo || '',
+      rutNumber: sanitizeRutNumber(student.rut_base || ''),
+      nombres: student.nombres || '',
+      apellidos: student.apellidos || '',
+      curso: student.curso || '',
+      email: student.email || '',
+      active: Boolean(student.activo)
+    });
+
+    const loadStudentsFromApi = async () => {
+      try {
+        const response = await fetch('/api/students', { method: 'GET' });
+        const result = await response.json();
+
+        if (!response.ok || !result.ok) {
+          throw new Error(result.message || 'No se pudo cargar la nómina de estudiantes.');
+        }
+
+        students = (result.students || [])
+          .map((student, index) => normalizeStudentFromApi(student, index))
+          .filter((student) => student.active && student.rutNumber);
+
+        studentsLoaded = true;
+        studentsLoadError = '';
+        renderSamples();
+        return true;
+      } catch (error) {
+        students = [];
+        studentsLoaded = false;
+        studentsLoadError = error instanceof Error ? error.message : 'No se pudo cargar la nómina de estudiantes.';
+        renderSamples();
+        console.error('Error cargando alumnos:', error);
+        return false;
+      }
+    };
+    const loadDashboardFromApi = async () => {
+      try {
+        const response = await fetch('/api/dashboard', { method: 'GET' });
+        const result = await response.json();
+
+        if (!response.ok || !result.ok) {
+          throw new Error(result.message || 'No se pudo cargar el dashboard.');
+        }
+
+        dashboardSummary = result.summary || null;
+        dashboardRecentAccesses = Array.isArray(result.recent_accesses) ? result.recent_accesses : [];
+        return true;
+      } catch (error) {
+        dashboardSummary = null;
+        dashboardRecentAccesses = [];
+        console.error('Error cargando dashboard:', error);
+        return false;
+      }
+    };
+
+
+    const loadResetLogsFromApi = async () => {
+      try {
+        const response = await fetch('/api/reset-logs', { method: 'GET' });
+        const result = await response.json();
+
+        if (!response.ok || !result.ok) {
+          throw new Error(result.message || 'No se pudo cargar el log de reseteos.');
+        }
+
+        resetLogsData = Array.isArray(result.logs) ? result.logs : [];
+        return true;
+      } catch (error) {
+        resetLogsData = [];
+        console.error('Error cargando reset logs:', error);
+        return false;
+      }
+    };
+
+
+    const loadAlertStudentsFromApi = async () => {
+      try {
+        const response = await fetch('/api/alert-students', { method: 'GET' });
+        const result = await response.json();
+
+        if (!response.ok || !result.ok) {
+          throw new Error(result.message || 'No se pudo cargar la lista de alumnos con alerta.');
+        }
+
+        alertStudentsData = Array.isArray(result.students) ? result.students : [];
+        return true;
+      } catch (error) {
+        alertStudentsData = [];
+        console.error('Error cargando alumnos con alerta:', error);
+        return false;
+      }
+    };
+
+
+    const loadReportPeriodsFromApi = async () => {
+      try {
+        const response = await fetch('/api/report-periods', { method: 'GET' });
+        const result = await response.json();
+
+        if (!response.ok || !result.ok) {
+          throw new Error(result.message || 'No se pudieron cargar los períodos disponibles.');
+        }
+
+        reportPeriodsData = Array.isArray(result.periods) ? result.periods : [];
+        return true;
+      } catch (error) {
+        reportPeriodsData = [];
+        console.error('Error cargando períodos:', error);
+        return false;
+      }
+    };
+
 
     const applyRoleUI = (role) => {
       document.body.classList.toggle('role-admin', role === 'admin');
@@ -2056,11 +2228,16 @@
 
     const resetEntryUI = () => {
       rutInput.value = '';
+      lastEntrySource = 'manual';
       studentCard.classList.remove('show');
       clearStatus();
     };
 
     const hideModal = (trigger = 'action') => {
+      if (document.activeElement && feedbackModal.contains(document.activeElement)) {
+        document.activeElement.blur();
+      }
+
       feedbackModal.classList.remove('show');
       modalCard.className = 'modal-card';
       feedbackModal.setAttribute('aria-hidden', 'true');
@@ -2068,15 +2245,20 @@
 
       const closeHandler = modalCloseHandler;
       const cancelHandler = modalCancelHandler;
+      const focusTarget = lastFocusedBeforeModal;
       modalCloseHandler = null;
       modalCancelHandler = null;
+      lastFocusedBeforeModal = null;
 
       if (trigger === 'cancel') {
         if (typeof cancelHandler === 'function') cancelHandler();
-        return;
+      } else if (typeof closeHandler === 'function') {
+        closeHandler();
       }
 
-      if (typeof closeHandler === 'function') closeHandler();
+      if (focusTarget && typeof focusTarget.focus === 'function') {
+        window.setTimeout(() => focusTarget.focus(), 20);
+      }
     };
 
     const showModal = ({
@@ -2089,6 +2271,7 @@
       cancelText = '',
       onCancel = null
     }) => {
+      lastFocusedBeforeModal = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       modalCard.className = `modal-card ${type}`.trim();
       modalKicker.className = `modal-kicker ${type}`;
       modalKicker.textContent =
@@ -2127,7 +2310,13 @@
 
       feedbackModal.classList.add('show');
       feedbackModal.setAttribute('aria-hidden', 'false');
-      modalActionButton.focus();
+      window.setTimeout(() => {
+        if (!modalCancelButton.hidden) {
+          modalCancelButton.focus();
+        } else {
+          modalActionButton.focus();
+        }
+      }, 20);
       playTone(type);
       vibrateFeedback(type);
     };
@@ -2174,7 +2363,7 @@
       studentCard.classList.add('show');
     };
 
-    const undoLastAcceptedEntry = (createdAt) => {
+    const undoLastAcceptedEntry = async (createdAt) => {
       const state = loadState();
       const nextRecords = state.records.filter((item) => item.createdAt !== createdAt);
       saveState({ ...state, records: nextRecords });
@@ -2184,6 +2373,25 @@
     };
 
     const renderStats = () => {
+      if (dashboardSummary) {
+        const stats = [
+          ['Ingresos hoy', dashboardSummary.ingresos_hoy ?? 0],
+          ['Atrasos del mes', dashboardSummary.atrasos_mes ?? 0],
+          ['Categoría A', dashboardSummary.categoria_a ?? 0],
+          ['Categoría B', dashboardSummary.categoria_b ?? 0],
+          ['Categoría C', dashboardSummary.categoria_c ?? 0],
+          ['Alumnos con 3 o más', dashboardSummary.alumnos_sobre_3 ?? 0]
+        ];
+
+        statsGrid.innerHTML = stats.map(([label, value]) => `
+          <div class="stat">
+            <div class="k">${label}</div>
+            <div class="v">${value}</div>
+          </div>
+        `).join('');
+        return;
+      }
+
       const state = loadState();
       const monthKey = getMonthKeyFromDate(new Date());
       const today = getTodayRecords(state);
@@ -2215,6 +2423,21 @@
     };
 
     const renderTodayTable = () => {
+      if (dashboardRecentAccesses.length) {
+        todayTableBody.innerHTML = dashboardRecentAccesses.slice(0, 10).map((record) => `
+          <tr>
+            <td>${record.hora}</td>
+            <td>${record.rut_completo || record.rut_base}</td>
+            <td>${record.nombre}</td>
+            <td>${record.curso}</td>
+            <td><span class="pill ${record.categoria === 'C' ? 'alert' : 'warning'}">Atraso ${record.categoria}</span></td>
+            <td>${record.categoria || '—'}</td>
+            <td>${record.created_by || '—'}</td>
+          </tr>
+        `).join('');
+        return;
+      }
+
       const rows = getTodayRecords(loadState());
       if (!rows.length) {
         todayTableBody.innerHTML = '<tr><td colspan="7" class="empty">Todavía no hay registros hoy.</td></tr>';
@@ -2237,7 +2460,9 @@
     const renderReport = () => {
       const state = loadState();
       const monthKey = getMonthKeyFromDate(new Date());
-      const report = getMonthlyReport(state, monthKey);
+      const notifications = Array.isArray(state.notifications) ? state.notifications : [];
+      const report = [...alertStudentsData]
+        .sort((a, b) => (b.current_month_count || 0) - (a.current_month_count || 0) || `${a.nombres || ''} ${a.apellidos || ''}`.localeCompare(`${b.nombres || ''} ${b.apellidos || ''}`));
 
       if (!report.length) {
         reportTableBody.innerHTML = '<tr><td colspan="8" class="empty">Aún no hay alumnos con 3 o más atrasos vigentes en este mes.</td></tr>';
@@ -2246,29 +2471,33 @@
         return;
       }
 
-      reportTableBody.innerHTML = report.map((item) => `
+      reportTableBody.innerHTML = report.map((item) => {
+        const sent = notifications.find((entry) => entry.rut_base === item.rut_base && entry.monthKey === monthKey) || null;
+        const fullName = `${item.nombres || ''} ${item.apellidos || ''}`.trim();
+        const email = item.email || '';
+        const emailButton = email
+          ? `<button class="table-action email-copy" type="button" data-email="${email}" title="Copiar correo">${email}</button>`
+          : '—';
+
+        return `
         <tr>
-          <td>${item.nombre}</td>
-          <td>${item.rutFull}</td>
-          <td>${item.curso}</td>
-          <td>${item.email}</td>
-          <td><span class="pill alert">${item.count}</span></td>
-          <td>${item.historicalCount}</td>
-          <td>A:${item.detalle.A} · B:${item.detalle.B} · C:${item.detalle.C}</td>
-          <td>${item.notification ? 'Simulada ' + formatDateTimeShort(item.notification.sentAt) : 'Pendiente'}</td>
-        </tr>
-      `).join('');
+          <td>${fullName}</td>
+          <td>${item.rut_completo || ''}</td>
+          <td>${item.curso || ''}</td>
+          <td>${emailButton}</td>
+          <td><span class="pill alert">${item.current_month_count || 0}</span></td>
+          <td>${item.total_historic_count || 0}</td>
+          <td>Desde 3 atrasos vigentes corresponde notificar.</td>
+          <td>${sent ? 'Simulada ' + formatDateTimeShort(sent.sentAt) : 'Pendiente'}</td>
+        </tr>`;
+      }).join('');
 
       reportStatusBox.className = 'status show error';
       reportStatusBox.innerHTML = `Hay <span class="strong-danger">${report.length}</span> alumno(s) con 3 o más atrasos vigentes en el mes actual.`;
     };
 
     const renderResetLog = () => {
-      const state = loadState();
-      const monthKey = getMonthKeyFromDate(new Date());
-      const rows = state.resetLog
-        .filter((entry) => entry.monthKey === monthKey)
-        .sort((a, b) => (a.resetAt < b.resetAt ? 1 : -1));
+      const rows = [...resetLogsData].sort((a, b) => (a.reset_at < b.reset_at ? 1 : -1));
 
       if (!rows.length) {
         resetLogTableBody.innerHTML = '<tr><td colspan="7" class="empty">Aún no hay reseteos registrados en este mes.</td></tr>';
@@ -2277,13 +2506,13 @@
 
       resetLogTableBody.innerHTML = rows.map((entry) => `
         <tr>
-          <td>${formatDateShort(entry.resetAt)}</td>
-          <td>${new Date(entry.resetAt).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</td>
-          <td>${entry.performedBy}</td>
-          <td>${entry.nombre}</td>
-          <td>${entry.curso}</td>
-          <td>${entry.previousOperationalCount}</td>
-          <td>${entry.newOperationalCount}</td>
+          <td>${formatDateShort(entry.reset_at)}</td>
+          <td>${new Date(entry.reset_at).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</td>
+          <td>${entry.reset_by || ''}</td>
+          <td>${entry.nombre_completo || ''}</td>
+          <td>${entry.curso || ''}</td>
+          <td>${entry.previous_counter ?? 0}</td>
+          <td>0</td>
         </tr>
       `).join('');
     };
@@ -2318,11 +2547,77 @@
       automationStatusBox.innerHTML = `Se han generado <strong>${rows.length}</strong> despacho(s) mensual(es) simulados para inspectoría.`;
     };
 
-    const refreshAll = () => {
+    const downloadSelectedPeriodReport = () => {
+      const selectedKey = reportPeriodSelect?.value || '';
+      const nextPeriod = getNextPeriodFromKey(selectedKey);
+
+      if (!nextPeriod) {
+        periodExportStatusBox.className = 'status show error';
+        periodExportStatusBox.innerHTML = 'Debes seleccionar un período válido para descargar el informe.';
+        return;
+      }
+
+      const url = `/api/export-monthly-full?year=${nextPeriod.year}&month=${nextPeriod.month}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
+      const selected = reportPeriodsData.find((period) => period.key === selectedKey);
+      periodExportStatusBox.className = 'status show success';
+      periodExportStatusBox.innerHTML = `Se inició la descarga del Excel correspondiente a <strong>${selected?.label || selectedKey}</strong>.`;
+    };
+
+    const sendSelectedPeriodReport = async () => {
+      const selectedKey = reportPeriodSelect?.value || '';
+      const nextPeriod = getNextPeriodFromKey(selectedKey);
+
+      if (!nextPeriod) {
+        periodExportStatusBox.className = 'status show error';
+        periodExportStatusBox.innerHTML = 'Debes seleccionar un período válido para enviar el informe.';
+        return;
+      }
+
+      sendPeriodButton.disabled = true;
+      const originalText = sendPeriodButton.textContent;
+      sendPeriodButton.textContent = 'Enviando...';
+
+      try {
+        const response = await fetch('/api/send-monthly-report', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            year: nextPeriod.year,
+            month: nextPeriod.month
+          })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.ok) {
+          throw new Error(result.message || 'No se pudo enviar el informe al correo.');
+        }
+
+        const selected = reportPeriodsData.find((period) => period.key === selectedKey);
+        periodExportStatusBox.className = 'status show success';
+        periodExportStatusBox.innerHTML = `Informe enviado correctamente a <strong>${INSPECTORIA_EMAIL}</strong> para el período <strong>${selected?.label || selectedKey}</strong>.`;
+        automationStatusBox.className = 'status show success';
+        automationStatusBox.innerHTML = `Se envió un informe real a <strong>${INSPECTORIA_EMAIL}</strong> para el período <strong>${selected?.label || selectedKey}</strong>.`;
+      } catch (error) {
+        periodExportStatusBox.className = 'status show error';
+        periodExportStatusBox.innerHTML = error instanceof Error ? error.message : 'No se pudo enviar el informe al correo.';
+      } finally {
+        sendPeriodButton.disabled = false;
+        sendPeriodButton.textContent = originalText;
+      }
+    };
+
+    const refreshAll = async () => {
       const monthKey = getMonthKeyFromDate(new Date());
+      await loadDashboardFromApi();
+      await loadResetLogsFromApi();
+      await loadAlertStudentsFromApi();
+      await loadReportPeriodsFromApi();
       renderStats();
       renderTodayTable();
       renderReport();
+      renderReportPeriods();
       renderResetLog();
       renderAutomationTable();
       monthBadge.textContent = `Periodo ${monthKey}`;
@@ -2348,32 +2643,58 @@
       applyRoleUI(role);
     };
 
-    const handleLogin = (event) => {
+    const handleLogin = async (event) => {
       event.preventDefault();
+
       const user = (loginUser.value || '').trim().toLowerCase();
       const pass = loginPassword.value || '';
-      const matchedUser = USERS[user];
 
-      if (matchedUser && matchedUser.password === pass) {
+      loginError.classList.remove('show');
+      loginError.textContent = 'Usuario o clave incorrectos.';
+
+      try {
+        const response = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: user, password: pass })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.ok) {
+          loginError.textContent = result.message || 'Usuario o clave incorrectos.';
+          loginError.classList.add('show');
+          loginPassword.value = '';
+          loginPassword.focus();
+          vibrateFeedback('error');
+          playTone('error');
+          return;
+        }
+
         sessionStorage.setItem(LOGIN_STORAGE_KEY, 'ok');
-        sessionStorage.setItem(LOGIN_USERNAME_KEY, user);
-        sessionStorage.setItem(LOGIN_ROLE_KEY, matchedUser.role);
+        sessionStorage.setItem(LOGIN_USERNAME_KEY, result.user.username);
+        sessionStorage.setItem(LOGIN_ROLE_KEY, result.user.role);
+
+        await loadStudentsFromApi();
         loginError.classList.remove('show');
         showAppShell();
         updateClock();
-        refreshAll();
-        return;
+        await refreshAll();
+      } catch {
+        loginError.textContent = 'No se pudo conectar con el servidor.';
+        loginError.classList.add('show');
+        vibrateFeedback('error');
+        playTone('error');
       }
-
-      loginError.textContent = 'Usuario o clave incorrectos.';
-      loginError.classList.add('show');
-      loginPassword.value = '';
-      loginPassword.focus();
-      vibrateFeedback('error');
-      playTone('error');
     };
 
-    const logout = () => {
+    const logout = async () => {
+      try {
+        await fetch('/api/session', { method: 'DELETE' });
+      } catch {
+        // aunque falle, seguimos cerrando sesión local
+      }
+
       sessionStorage.removeItem(LOGIN_STORAGE_KEY);
       sessionStorage.removeItem(LOGIN_USERNAME_KEY);
       sessionStorage.removeItem(LOGIN_ROLE_KEY);
@@ -2383,16 +2704,32 @@
       showLoginScreen();
     };
 
-    const restoreAccess = () => {
-      if (sessionStorage.getItem(LOGIN_STORAGE_KEY) === 'ok') {
-        const username = (sessionStorage.getItem(LOGIN_USERNAME_KEY) || '').toLowerCase();
-        if (USERS[username]) {
-          sessionStorage.setItem(LOGIN_ROLE_KEY, USERS[username].role);
-          showAppShell();
+    const restoreAccess = async () => {
+      try {
+        const response = await fetch('/api/session', { method: 'GET' });
+
+        if (!response.ok) {
+          showLoginScreen();
           return;
         }
+
+        const result = await response.json();
+
+        if (!result.ok || !result.authenticated) {
+          showLoginScreen();
+          return;
+        }
+
+        sessionStorage.setItem(LOGIN_STORAGE_KEY, 'ok');
+        sessionStorage.setItem(LOGIN_USERNAME_KEY, result.user.username);
+        sessionStorage.setItem(LOGIN_ROLE_KEY, result.user.role);
+
+        await loadStudentsFromApi();
+        showAppShell();
+        await refreshAll();
+      } catch {
+        showLoginScreen();
       }
-      showLoginScreen();
     };
 
     const stopScanner = () => {
@@ -2409,6 +2746,7 @@
 
     const processScannedText = (value) => {
       const digits = sanitizeRutNumber(String(value || ''));
+      lastEntrySource = 'qr';
       if (!digits) return false;
       rutInput.value = digits;
       renderStatus(`QR leído correctamente. RUT numérico capturado: <strong>${digits}</strong>. Registrando ingreso automáticamente...`, 'success');
@@ -2508,6 +2846,7 @@
         const target = event.target.closest('[data-key]');
         if (!target) return;
         const key = target.dataset.key;
+        lastEntrySource = 'manual';
         if (key === '⌫') {
           rutInput.value = rutInput.value.slice(0, -1);
           return;
@@ -2516,24 +2855,34 @@
           registerCurrentRut();
           return;
         }
-        if (rutInput.value.length >= 8) return;
+        if (rutInput.value.length >= 9) return;
         rutInput.value += key;
       });
     };
 
     const renderSamples = () => {
-      sampleList.innerHTML = students.map((student) => `
+      if (!sampleList) return;
+
+      if (!students.length) {
+        sampleList.innerHTML = `<div class="empty">${studentsLoadError ? 'No se pudo cargar la nómina real.' : 'No hay alumnos disponibles para mostrar.'}</div>`;
+        return;
+      }
+
+      sampleList.innerHTML = students.slice(0, 12).map((student) => `
         <button class="chip" data-rut="${student.rutNumber}">${student.rutNumber} · ${student.nombres}</button>
       `).join('');
+    };
 
+    if (sampleList) {
       sampleList.addEventListener('click', (event) => {
         const chip = event.target.closest('[data-rut]');
         if (!chip) return;
+        lastEntrySource = 'manual';
         rutInput.value = chip.dataset.rut;
       });
-    };
+    }
 
-    const registerCurrentRut = () => {
+    const registerCurrentRut = async () => {
       clearStatus();
       const value = sanitizeRutNumber(rutInput.value);
       rutInput.value = value;
@@ -2545,6 +2894,28 @@
           buttonText: 'INGRESAR NUEVAMENTE',
           type: 'error',
           onClose: resetEntryUI
+        });
+        return;
+      }
+
+      if (!studentsLoaded) {
+        showModal({
+          title: 'NÓMINA NO DISPONIBLE',
+          message: studentsLoadError || 'La lista de estudiantes aún no está disponible. Intenta nuevamente en unos segundos.',
+          buttonText: 'INGRESAR NUEVAMENTE',
+          type: 'error',
+          onClose: resetEntryUI
+        });
+        return;
+      }
+
+      if (!studentsLoaded) {
+        closeResetStudentModal();
+        showModal({
+          title: 'NÓMINA NO DISPONIBLE',
+          message: studentsLoadError || 'La lista de estudiantes aún no está disponible para procesar reseteos.',
+          buttonText: 'OK',
+          type: 'error'
         });
         return;
       }
@@ -2561,77 +2932,106 @@
         return;
       }
 
-      const now = new Date();
-      const dateKey = getDateKey(now);
-      const monthKey = getMonthKeyFromDate(now);
-      const state = loadState();
+      try {
+        const response = await fetch('/api/register-tardy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            rut_base: value,
+            source: lastEntrySource,
+            created_by: currentUser() || 'desconocido'
+          })
+        });
 
-      if (hasDuplicateToday(student.id, dateKey, state)) {
+        const result = await response.json();
+
+        if (!response.ok || !result.ok) {
+          const errorTitle =
+            response.status === 404 ? 'RUT NO ENCONTRADO' :
+            response.status === 409 ? 'ALUMNO YA REGISTRADO' :
+            'REVISIÓN REQUERIDA';
+
+          const errorMessage =
+            response.status === 404
+              ? ''
+              : result.message || 'No se pudo registrar el ingreso.';
+
+          showModal({
+            title: errorTitle,
+            message: errorMessage,
+            buttonText: 'INGRESAR NUEVAMENTE',
+            type: 'error',
+            onClose: resetEntryUI
+          });
+          return;
+        }
+
+        const apiStudent = result.student;
+        const apiTardy = result.tardy;
+        const monthKey = getMonthKeyFromDate(new Date(`${apiTardy.fecha}T${apiTardy.hora}`));
+        const state = loadState();
+
+        const record = {
+          studentId: student.id,
+          nombre: `${apiStudent.nombres} ${apiStudent.apellidos}`,
+          rutFull: apiStudent.rut_completo,
+          rutNumber: apiStudent.rut_base,
+          curso: apiStudent.curso,
+          email: apiStudent.email,
+          estado: 'atraso',
+          categoria: apiTardy.categoria,
+          label: `Atraso ${apiTardy.categoria}`,
+          pillClass: apiTardy.categoria === 'A' ? 'warn' : apiTardy.categoria === 'B' ? 'orange' : 'danger',
+          dateKey: apiTardy.fecha,
+          monthKey,
+          dateLabel: formatDateLong(new Date(`${apiTardy.fecha}T${apiTardy.hora}`)),
+          time: apiTardy.hora.slice(0,5),
+          createdAt: new Date().toISOString()
+        };
+
+        const nextState = {
+          ...state,
+          records: [...state.records, record]
+        };
+
+        saveState(nextState);
+        renderStudentCard(record, apiTardy.current_month_count, apiTardy.total_historic_count);
+        await refreshAll();
+
+        let message = 'El ingreso fue almacenado correctamente y el sistema quedó listo para registrar al siguiente estudiante.';
+        const modalType = getLateVisualState(apiTardy.current_month_count, 'atraso');
+
+        if (apiTardy.current_month_count >= 3) {
+          message = `El ingreso quedó registrado como <strong>Atraso ${apiTardy.categoria}</strong>. El alumno acumula <strong>${apiTardy.current_month_count}</strong> atrasos vigentes en el mes y corresponde contactar a su apoderado. <br><br><strong>Histórico total:</strong> ${apiTardy.total_historic_count} atraso(s).`;
+        } else if (apiTardy.current_month_count === 2) {
+          message = `El ingreso quedó registrado como <strong>Atraso ${apiTardy.categoria}</strong>. El alumno acumula <strong>2</strong> atrasos vigentes en el mes. <br><br><strong>Histórico total:</strong> ${apiTardy.total_historic_count} atraso(s).`;
+        } else {
+          message = `El ingreso quedó registrado como <strong>Atraso ${apiTardy.categoria}</strong>. Este es su <strong>${apiTardy.current_month_count}</strong> atraso vigente del mes. <br><br><strong>Histórico total:</strong> ${apiTardy.total_historic_count} atraso(s).`;
+        }
+
         showModal({
-          title: 'ALUMNO YA REGISTRADO',
-          message: `<strong>${student.nombres} ${student.apellidos}</strong> ya fue ingresado hoy. El sistema bloqueó el duplicado y no guardó un nuevo registro.`,
+          title: 'INGRESO REGISTRADO',
+          message,
+          buttonText: 'OK',
+          type: modalType,
+          details: {
+            student: record.nombre,
+            course: record.curso,
+            time: record.time
+          },
+          onClose: resetEntryUI,
+          cancelText: 'Cancelar',
+          onCancel: () => undoLastAcceptedEntry(record.createdAt)
+        });
+      } catch {
+        showModal({
+          title: 'ERROR DE CONEXIÓN',
+          message: 'No se pudo registrar el ingreso en el servidor. Intenta nuevamente.',
           buttonText: 'INGRESAR NUEVAMENTE',
           type: 'error',
           onClose: resetEntryUI
         });
-        return;
       }
-
-      const classification = classifyEntry(now);
-      const record = {
-        studentId: student.id,
-        nombre: `${student.nombres} ${student.apellidos}`,
-        rutFull: student.rutFull,
-        rutNumber: student.rutNumber,
-        curso: student.curso,
-        email: student.email,
-        estado: classification.estado,
-        categoria: classification.categoria,
-        label: classification.label,
-        pillClass: classification.pillClass,
-        dateKey,
-        monthKey,
-        dateLabel: formatDateLong(now),
-        time: formatHourMinute(now),
-        createdAt: now.toISOString()
-      };
-
-      const nextState = {
-        ...state,
-        records: [...state.records, record]
-      };
-
-      saveState(nextState);
-      const operationalCount = monthLateCountForStudent(student.id, nextState, monthKey);
-      const historicalCount = historicalLateCountForStudent(student.id, nextState, monthKey);
-      renderStudentCard(record, operationalCount, historicalCount);
-      refreshAll();
-
-      let message = 'El ingreso fue almacenado correctamente y el sistema quedó listo para registrar al siguiente estudiante.';
-      const modalType = getLateVisualState(operationalCount, classification.estado);
-
-      if (classification.estado === 'atraso' && operationalCount >= 3) {
-        message = `El ingreso quedó registrado como <strong>${classification.label}</strong>. El alumno acumula <strong>${operationalCount}</strong> atrasos vigentes en el mes y corresponde contactar a su apoderado. <br><br><strong>Histórico del mes:</strong> ${historicalCount} atraso(s).`;
-      } else if (classification.estado === 'atraso' && operationalCount === 2) {
-        message = `El ingreso quedó registrado como <strong>${classification.label}</strong>. El alumno acumula <strong>2</strong> atrasos vigentes en el mes. <br><br><strong>Histórico del mes:</strong> ${historicalCount} atraso(s).`;
-      } else if (classification.estado === 'atraso') {
-        message = `El ingreso quedó registrado como <strong>${classification.label}</strong>. Este es su <strong>${operationalCount}</strong> atraso vigente del mes. <br><br><strong>Histórico del mes:</strong> ${historicalCount} atraso(s).`;
-      }
-
-      showModal({
-        title: classification.estado === 'normal' ? 'INGRESO ACEPTADO' : 'INGRESO REGISTRADO',
-        message,
-        buttonText: 'OK',
-        type: modalType,
-        details: {
-          student: record.nombre,
-          course: record.curso,
-          time: record.time
-        },
-        onClose: resetEntryUI,
-        cancelText: 'Cancelar',
-        onCancel: () => undoLastAcceptedEntry(record.createdAt)
-      });
     };
 
     const copyEmails = async () => {
@@ -2694,53 +3094,33 @@
     };
 
     const exportEmails = () => {
-      const monthKey = getMonthKeyFromDate(new Date());
-      const report = getMonthlyReport(loadState(), monthKey);
-      if (!report.length) {
-        reportStatusBox.className = 'status info show';
-        reportStatusBox.innerHTML = 'No hay alumnos con 3 o más atrasos vigentes para exportar en este mes.';
-        return;
-      }
-
-      const excelHtml = buildExcelHtml({
-        title: `Informe operativo de atrasos · ${monthLabelFromKey(monthKey)}`,
-        subtitle: 'Alumnos con 3 o más atrasos vigentes en el período actual.',
-        headers: ['Alumno', 'RUT completo', 'Curso', 'Correo', 'Atrasos vigentes', 'Histórico del mes', 'Detalle vigente', 'Notificación'],
-        rows: report.map((item) => [
-          item.nombre,
-          item.rutFull,
-          item.curso,
-          item.email,
-          item.count,
-          item.historicalCount,
-          `A:${item.detalle.A} · B:${item.detalle.B} · C:${item.detalle.C}`,
-          item.notification ? `Simulada ${formatDateTimeShort(item.notification.sentAt)}` : 'Pendiente'
-        ])
-      });
-
-      downloadBlobFile(excelHtml, `informe_atrasos_operativo_${monthKey}.xls`, 'application/vnd.ms-excel;charset=utf-8;');
+      const now = new Date();
+      const month = now.getMonth() + 1;
+      const year = now.getFullYear();
+      const url = `/api/export-monthly?year=${year}&month=${month}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
       reportStatusBox.className = 'status show success';
-      reportStatusBox.innerHTML = 'Se exportó el informe operativo del período en un archivo compatible con Excel.';
+      reportStatusBox.innerHTML = 'Se inició la descarga del informe mensual en formato Excel.';
     };
 
     const simulateSend = () => {
       const state = loadState();
       const monthKey = getMonthKeyFromDate(new Date());
-      const report = getMonthlyReport(state, monthKey);
+      const report = [...alertStudentsData];
 
       if (!report.length) {
         reportStatusBox.className = 'status info show';
-        reportStatusBox.innerHTML = 'No hay alumnos sobre el umbral vigente, así que no hay notificación que simular.';
+        reportStatusBox.innerHTML = 'No hay alumnos desde 3 atrasos vigentes, así que no hay notificación que simular.';
         return;
       }
 
       const sentAt = new Date().toISOString();
-      const notifications = [...state.notifications];
+      const notifications = [...(state.notifications || [])];
 
       report.forEach((item) => {
-        const existing = notifications.find((entry) => entry.studentId === item.studentId && entry.monthKey === monthKey);
+        const existing = notifications.find((entry) => entry.rut_base === item.rut_base && entry.monthKey === monthKey);
         if (existing) existing.sentAt = sentAt;
-        else notifications.push({ studentId: item.studentId, monthKey, sentAt });
+        else notifications.push({ rut_base: item.rut_base, monthKey, sentAt });
       });
 
       saveState({ ...state, notifications });
@@ -2812,6 +3192,7 @@
     };
 
     const openResetStudentModal = () => {
+      lastFocusedBeforeResetModal = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       resetStudentForm.reset();
       resetStudentError.classList.remove('show');
       resetStudentModal.classList.add('show');
@@ -2820,12 +3201,19 @@
     };
 
     const closeResetStudentModal = () => {
+      if (document.activeElement && resetStudentModal.contains(document.activeElement)) {
+        document.activeElement.blur();
+      }
       resetStudentModal.classList.remove('show');
       resetStudentModal.setAttribute('aria-hidden', 'true');
       resetStudentError.classList.remove('show');
+      if (lastFocusedBeforeResetModal && typeof lastFocusedBeforeResetModal.focus === 'function') {
+        window.setTimeout(() => lastFocusedBeforeResetModal.focus(), 20);
+      }
+      lastFocusedBeforeResetModal = null;
     };
 
-    const executeStudentReset = () => {
+    const executeStudentReset = async () => {
       const value = sanitizeRutNumber(resetStudentRutInput.value);
       resetStudentRutInput.value = value;
 
@@ -2835,72 +3223,88 @@
         return;
       }
 
-      const student = students.find((item) => item.rutNumber === value);
-      if (!student) {
-        closeResetStudentModal();
-        showModal({
-          title: 'RUT NO ENCONTRADO',
-          message: 'No se encontró un estudiante con ese RUT para aplicar el reseteo.',
-          buttonText: 'INGRESAR NUEVAMENTE',
-          type: 'error'
+      resetStudentConfirm.disabled = true;
+      resetStudentConfirm.textContent = 'Reseteando...';
+      resetStudentError.classList.remove('show');
+
+      try {
+        const response = await fetch('/api/reset-student', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            rut_base: value,
+            reset_by: currentUser()
+          })
         });
-        return;
-      }
 
-      const state = loadState();
-      const monthKey = getMonthKeyFromDate(new Date());
-      const operationalCount = monthLateCountForStudent(student.id, state, monthKey);
-      const historicalCount = historicalLateCountForStudent(student.id, state, monthKey);
+        const result = await response.json();
 
-      if (operationalCount === 0) {
-        closeResetStudentModal();
-        showModal({
-          title: 'SIN ATRASOS VIGENTES',
-          message: `<strong>${student.nombres} ${student.apellidos}</strong> ya tiene su contador operativo en cero. El histórico del mes sigue en <strong>${historicalCount}</strong>.`,
-          buttonText: 'OK',
-          type: 'warning'
-        });
-        return;
-      }
+        if (!response.ok || !result.ok) {
+          resetStudentConfirm.disabled = false;
+          resetStudentConfirm.textContent = 'Confirmar reseteo';
 
-      const now = new Date();
-      const resetEntry = {
-        studentId: student.id,
-        rutFull: student.rutFull,
-        rutNumber: student.rutNumber,
-        nombre: `${student.nombres} ${student.apellidos}`,
-        curso: student.curso,
-        performedBy: currentUser(),
-        previousOperationalCount: operationalCount,
-        newOperationalCount: 0,
-        historicalCount,
-        resetAt: now.toISOString(),
-        monthKey
-      };
-
-      saveState({
-        ...state,
-        resetLog: [...state.resetLog, resetEntry]
-      });
-
-      closeResetStudentModal();
-      refreshAll();
-      showModal({
-        title: 'RESETEO REGISTRADO',
-        message: `Se reinició el contador operativo de <strong>${resetEntry.nombre}</strong>. <br><br><strong>Atrasos vigentes antes del reseteo:</strong> ${operationalCount}<br><strong>Histórico del mes que se conserva:</strong> ${historicalCount}`,
-        buttonText: 'OK',
-        type: 'success',
-        details: {
-          student: resetEntry.nombre,
-          course: resetEntry.curso,
-          time: formatHourMinute(now)
+          closeResetStudentModal();
+          showModal({
+            title: result.message === 'Estudiante no encontrado.' ? 'RUT NO ENCONTRADO' : 'NO SE PUDO RESETEAR',
+            message: result.message === 'Estudiante no encontrado.'
+              ? 'No se encontró un estudiante con ese RUT para aplicar el reseteo.'
+              : (result.message || 'Ocurrió un problema al intentar resetear el contador del estudiante.'),
+            buttonText: result.message === 'Estudiante no encontrado.' ? 'INGRESAR NUEVAMENTE' : 'OK',
+            type: 'error'
+          });
+          return;
         }
-      });
+
+        const now = new Date();
+        const state = loadState();
+        const monthKey = getMonthKeyFromDate(new Date());
+
+        const resetEntry = {
+          studentId: null,
+          rutFull: '',
+          rutNumber: result.student?.rut_base || value,
+          nombre: result.student?.nombre_completo || 'Estudiante',
+          curso: result.student?.curso || '',
+          performedBy: result.reset?.reset_by || currentUser(),
+          previousOperationalCount: result.reset?.previous_counter || 0,
+          newOperationalCount: result.reset?.current_month_count ?? 0,
+          historicalCount: result.reset?.total_historic_count || 0,
+          resetAt: now.toISOString(),
+          monthKey
+        };
+
+        saveState({
+          ...state,
+          resetLog: [...state.resetLog, resetEntry]
+        });
+
+        resetStudentConfirm.disabled = false;
+        resetStudentConfirm.textContent = 'Confirmar reseteo';
+        closeResetStudentModal();
+        await refreshAll();
+        showModal({
+          title: 'RESETEO REGISTRADO',
+          message: `Se reinició el contador operativo de <strong>${resetEntry.nombre}</strong>. <br><br><strong>Atrasos vigentes antes del reseteo:</strong> ${resetEntry.previousOperationalCount}<br><strong>Histórico total que se conserva:</strong> ${resetEntry.historicalCount}`,
+          buttonText: 'OK',
+          type: 'success',
+          details: {
+            student: resetEntry.nombre,
+            course: resetEntry.curso,
+            time: formatHourMinute(now)
+          }
+        });
+      } catch {
+        resetStudentConfirm.disabled = false;
+        resetStudentConfirm.textContent = 'Confirmar reseteo';
+        resetStudentError.textContent = 'No se pudo conectar con el servidor para ejecutar el reseteo.';
+        resetStudentError.classList.add('show');
+      }
     };
 
-    copyEmailsButton.addEventListener('click', copyEmails);
     exportEmailsButton.addEventListener('click', exportEmails);
     simulateSendButton.addEventListener('click', simulateSend);
+    if (downloadPeriodButton) downloadPeriodButton.addEventListener('click', downloadSelectedPeriodReport);
+    if (sendPeriodButton) sendPeriodButton.addEventListener('click', sendSelectedPeriodReport);
     resetStudentButton.addEventListener('click', openResetStudentModal);
     registerButton.addEventListener('click', registerCurrentRut);
     clearButton.addEventListener('click', resetEntryUI);
@@ -2916,6 +3320,46 @@
 
     scanBox.addEventListener('click', (event) => {
       if (event.target === scanBox) stopScanner();
+    });
+
+    rutInput.addEventListener('input', () => {
+      rutInput.value = sanitizeRutNumber(rutInput.value);
+      lastEntrySource = 'manual';
+    });
+
+    rutInput.addEventListener('paste', async (event) => {
+      event.preventDefault();
+      const pasted = event.clipboardData ? event.clipboardData.getData('text') : '';
+      const digits = sanitizeRutNumber(pasted);
+      if (!digits) return;
+      rutInput.value = digits;
+      lastEntrySource = 'manual';
+      renderStatus(`RUT pegado correctamente: <strong>${digits}</strong>.`, 'success');
+    });
+
+    reportTableBody.addEventListener('click', async (event) => {
+      const button = event.target.closest('[data-email]');
+      if (!button) return;
+      const email = button.dataset.email || '';
+      if (!email) return;
+
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(email);
+        } else {
+          const temp = document.createElement('textarea');
+          temp.value = email;
+          document.body.appendChild(temp);
+          temp.select();
+          document.execCommand('copy');
+          temp.remove();
+        }
+        reportStatusBox.className = 'status show success';
+        reportStatusBox.innerHTML = `Correo copiado al portapapeles: <strong>${email}</strong>`;
+      } catch {
+        reportStatusBox.className = 'status show error';
+        reportStatusBox.innerHTML = 'No se pudo copiar el correo al portapapeles.';
+      }
     });
 
     modalActionButton.addEventListener('click', () => hideModal('action'));
@@ -2954,7 +3398,7 @@
     logoutButtons.forEach((button) => button.addEventListener('click', logout));
 
     createKeypad();
-    renderSamples();
+    loadStudentsFromApi();
     ensureAutoMonthlyDispatch();
     refreshAll();
     restoreAccess();
