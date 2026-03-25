@@ -1295,6 +1295,27 @@
       }
     }
 
+
+    .site-footer {
+      width: min(1180px, calc(100vw - 24px));
+      margin: 10px auto 18px;
+      padding: 0 8px;
+      text-align: center;
+      font-size: 11px;
+      line-height: 1.45;
+      color: rgba(95, 101, 112, 0.88);
+    }
+
+    .site-footer a {
+      color: var(--becarb-deep);
+      text-decoration: none;
+    }
+
+    .site-footer a:hover,
+    .site-footer a:focus-visible {
+      text-decoration: underline;
+    }
+
   </style>
 </head>
 <body>
@@ -1327,10 +1348,7 @@
 
         <div class="login-error" id="loginError">Usuario o clave incorrectos.</div>
 
-        <div class="login-hint">
-          Acceso restringido a usuarios autorizados del sistema.
-        </div>
-      </section>
+    </section>
     </div>
   </div>
 
@@ -1342,12 +1360,12 @@
           <div class="brand">
             <img src="https://becarb.cl/wp-content/uploads/2019/10/logoweb_becarb_trans.png" alt="Logo Becarb" />
           </div>
-          <span class="tag">Beta demo · Control de atrasos</span>
-          <h1>Ingreso rápido por RUT o QR, con hora automática del sistema.</h1>
+          <span class="tag">Versión de Prueba</span>
+          <h1>Control de Atrasos Portería.</h1>
           <p>
-            Esta versión de demostración simula el flujo de portería: lectura de RUT sin dígito verificador,
+            Esta versión de demostración controla el flujo de portería: lectura de RUT sin dígito verificador,
             cruce con la base de estudiantes, bloqueo de duplicados en el día, conteo mensual de atrasos y
-            preparación del informe final con notificación simulada al correo del alumno.
+            preparación del informe final con notificación al correo del alumno.
           </p>
         </div>
       </article>
@@ -1376,13 +1394,6 @@
           <span class="badge-inline" id="monthBadge">Periodo actual</span>
         </div>
 
-        <div class="flow">
-          <span>1. Leer RUT</span>
-          <span>2. Buscar alumno</span>
-          <span>3. Guardar ingreso</span>
-          <span>4. Contar atrasos</span>
-          <span>5. Alertar sobre 3</span>
-        </div>
 
         <div class="entry-wrap">
           <div class="entry-box">
@@ -1544,7 +1555,7 @@
 
       <div class="report-actions">
         <button class="btn btn-secondary" id="exportEmailsButton">Exportar Excel</button>
-        <button class="btn btn-primary" id="simulateSendButton">Enviar notificación simulada</button>
+        <button class="btn btn-primary" id="simulateSendButton">Enviar notificación</button>
       </div>
 
       <div class="status info show" id="reportStatusBox">
@@ -1596,7 +1607,7 @@
     <section class="panel admin-only" id="auditFooterPanel" style="margin-top:18px;">
       <div class="panel-header">
         <div>
-          <h2 class="panel-title">Pie del sistema · control y auditoría</h2>
+          <h2 class="panel-title">Control y auditoría</h2>
           <p class="panel-sub">Resetea contadores operativos de manera individual y revisa la trazabilidad de reseteos y reportes automáticos.</p>
         </div>
       </div>
@@ -1629,9 +1640,9 @@
         </table>
       </div>
 
-      <h3 class="subsection-title">Despachos mensuales simulados a inspectoría</h3>
+      <h3 class="subsection-title">Despachos mensuales a inspectoría</h3>
       <div class="status info show" id="automationStatusBox">
-        El sistema genera automáticamente un despacho mensual simulado para <strong>inspectoria@becarb.cl</strong> cuando detecta un cierre de mes pendiente.
+        El sistema genera automáticamente un despacho mensual para <strong>inspectoria@becarb.cl</strong> cuando detecta un cierre de mes pendiente.
       </div>
 
       <div class="table-wrap">
@@ -1647,7 +1658,7 @@
             </tr>
           </thead>
           <tbody id="automationTableBody">
-            <tr><td colspan="6" class="empty">Todavía no hay despachos mensuales simulados.</td></tr>
+            <tr><td colspan="6" class="empty">Todavía no hay despachos mensuales.</td></tr>
           </tbody>
         </table>
       </div>
@@ -3089,6 +3100,12 @@
     <tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr>
     ${tableRows || `<tr><td colspan="${headers.length}">Sin registros</td></tr>`}
   </table>
+
+  <footer class="site-footer">
+    Control de Atrasos - Desarrollado por
+    <a href="https://ampliadesign.cl" target="_blank" rel="noopener noreferrer">ampliadesign.cl</a>
+  </footer>
+
 </body>
 </html>`;
     };
@@ -3410,5 +3427,11 @@
     }, 60000);
 
   </script>
+
+  <footer class="site-footer">
+    Control de Atrasos v1.0 - Desarrollado por
+    <a href="https://ampliadesign.cl" target="_blank" rel="noopener noreferrer">ampliadesign.cl</a>
+  </footer>
+
 </body>
 </html>
