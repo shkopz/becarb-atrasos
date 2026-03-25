@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import bcrypt from "bcryptjs";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -23,7 +24,7 @@ export async function POST(request: Request) {
 
     const { data, error } = await supabase
       .from("users")
-      .select("username, role, password_hash, active")
+      .select("username, role, password_hash, active, email")
       .eq("username", username)
       .single();
 
@@ -41,7 +42,9 @@ export async function POST(request: Request) {
       );
     }
 
-    if (data.password_hash !== password) {
+    const passwordOk = await bcrypt.compare(password, data.password_hash || "");
+
+    if (!passwordOk) {
       return NextResponse.json(
         { ok: false, message: "Usuario o clave incorrectos." },
         { status: 401 }
@@ -53,6 +56,7 @@ export async function POST(request: Request) {
       user: {
         username: data.username,
         role: data.role,
+        email: data.email || "",
       },
     });
 

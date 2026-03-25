@@ -1110,6 +1110,101 @@
       box-shadow: 0 12px 24px rgba(29,116,183,0.22);
     }
 
+
+    .forgot-password-wrap {
+      margin-top: 12px;
+      display: flex;
+      justify-content: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .forgot-password-link {
+      border: 0;
+      background: transparent;
+      color: var(--becarb-deep);
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 6px 8px;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .forgot-password-link:hover,
+    .forgot-password-link:focus-visible {
+      color: var(--becarb-blue);
+    }
+
+    .password-reset-panel {
+      margin-top: 14px;
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(29,116,183,0.06);
+      border: 1px solid rgba(29,116,183,0.12);
+      position: relative;
+      z-index: 1;
+    }
+
+    .password-reset-panel[hidden] {
+      display: none !important;
+    }
+
+    .password-reset-panel h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      color: var(--becarb-deep);
+    }
+
+    .password-reset-panel p {
+      margin: 0 0 12px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--muted);
+    }
+
+    .password-reset-panel .login-field {
+      margin-bottom: 12px;
+    }
+
+    .password-reset-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .password-reset-actions .btn {
+      flex: 1 1 180px;
+      min-height: 48px;
+    }
+
+    .password-reset-message {
+      display: none;
+      margin-top: 12px;
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-size: 13px;
+      line-height: 1.5;
+      font-weight: 700;
+    }
+
+    .password-reset-message.show {
+      display: block;
+    }
+
+    .password-reset-message.success {
+      background: rgba(11,159,107,0.10);
+      color: var(--success);
+      border: 1px solid rgba(11,159,107,0.12);
+    }
+
+    .password-reset-message.error {
+      background: rgba(214,54,73,0.10);
+      color: var(--danger);
+      border: 1px solid rgba(214,54,73,0.12);
+    }
+
     .login-error {
       display: none;
       margin-top: 14px;
@@ -1348,7 +1443,28 @@
 
         <div class="login-error" id="loginError">Usuario o clave incorrectos.</div>
 
-    </section>
+        <div class="forgot-password-wrap">
+          <button class="forgot-password-link" id="forgotPasswordToggle" type="button">¿Olvidaste tu contraseña?</button>
+        </div>
+
+        <div class="password-reset-panel" id="passwordResetPanel" hidden>
+          <h3>Recuperar contraseña</h3>
+          <p>Ingresa el correo registrado del usuario. Si existe en el sistema, enviaremos un enlace para definir una nueva contraseña.</p>
+
+          <div class="login-field">
+            <label for="resetEmailInput">Correo registrado</label>
+            <input id="resetEmailInput" type="email" autocomplete="email" placeholder="correo@ejemplo.cl" />
+          </div>
+
+          <div class="password-reset-actions">
+            <button class="btn btn-primary" id="requestResetButton" type="button">Enviar enlace</button>
+            <button class="btn btn-secondary" id="closeResetPanelButton" type="button">Volver</button>
+          </div>
+
+          <div class="password-reset-message" id="passwordResetMessage"></div>
+        </div>
+
+      </section>
     </div>
   </div>
 
@@ -1360,12 +1476,12 @@
           <div class="brand">
             <img src="https://becarb.cl/wp-content/uploads/2019/10/logoweb_becarb_trans.png" alt="Logo Becarb" />
           </div>
-          <span class="tag">Versión de Prueba</span>
-          <h1>Control de Atrasos Portería.</h1>
+          <span class="tag">Beta demo · Control de atrasos</span>
+          <h1>Ingreso rápido por RUT o QR, con hora automática del sistema.</h1>
           <p>
-            Esta versión de demostración controla el flujo de portería: lectura de RUT sin dígito verificador,
+            Esta versión de demostración simula el flujo de portería: lectura de RUT sin dígito verificador,
             cruce con la base de estudiantes, bloqueo de duplicados en el día, conteo mensual de atrasos y
-            preparación del informe final con notificación al correo del alumno.
+            preparación del informe final con notificación simulada al correo del alumno.
           </p>
         </div>
       </article>
@@ -1394,6 +1510,13 @@
           <span class="badge-inline" id="monthBadge">Periodo actual</span>
         </div>
 
+        <div class="flow">
+          <span>1. Leer RUT</span>
+          <span>2. Buscar alumno</span>
+          <span>3. Guardar ingreso</span>
+          <span>4. Contar atrasos</span>
+          <span>5. Alertar sobre 3</span>
+        </div>
 
         <div class="entry-wrap">
           <div class="entry-box">
@@ -1555,7 +1678,7 @@
 
       <div class="report-actions">
         <button class="btn btn-secondary" id="exportEmailsButton">Exportar Excel</button>
-        <button class="btn btn-primary" id="simulateSendButton">Enviar notificación</button>
+        <button class="btn btn-primary" id="simulateSendButton">Enviar notificación simulada</button>
       </div>
 
       <div class="status info show" id="reportStatusBox">
@@ -1607,7 +1730,7 @@
     <section class="panel admin-only" id="auditFooterPanel" style="margin-top:18px;">
       <div class="panel-header">
         <div>
-          <h2 class="panel-title">Control y auditoría</h2>
+          <h2 class="panel-title">Pie del sistema · control y auditoría</h2>
           <p class="panel-sub">Resetea contadores operativos de manera individual y revisa la trazabilidad de reseteos y reportes automáticos.</p>
         </div>
       </div>
@@ -1640,9 +1763,9 @@
         </table>
       </div>
 
-      <h3 class="subsection-title">Despachos mensuales a inspectoría</h3>
+      <h3 class="subsection-title">Despachos mensuales simulados a inspectoría</h3>
       <div class="status info show" id="automationStatusBox">
-        El sistema genera automáticamente un despacho mensual para <strong>inspectoria@becarb.cl</strong> cuando detecta un cierre de mes pendiente.
+        El sistema genera automáticamente un despacho mensual simulado para <strong>inspectoria@becarb.cl</strong> cuando detecta un cierre de mes pendiente.
       </div>
 
       <div class="table-wrap">
@@ -1658,7 +1781,7 @@
             </tr>
           </thead>
           <tbody id="automationTableBody">
-            <tr><td colspan="6" class="empty">Todavía no hay despachos mensuales.</td></tr>
+            <tr><td colspan="6" class="empty">Todavía no hay despachos mensuales simulados.</td></tr>
           </tbody>
         </table>
       </div>
@@ -1757,6 +1880,12 @@
     const loginUser = document.getElementById('loginUser');
     const loginPassword = document.getElementById('loginPassword');
     const loginError = document.getElementById('loginError');
+    const forgotPasswordToggle = document.getElementById('forgotPasswordToggle');
+    const passwordResetPanel = document.getElementById('passwordResetPanel');
+    const resetEmailInput = document.getElementById('resetEmailInput');
+    const requestResetButton = document.getElementById('requestResetButton');
+    const closeResetPanelButton = document.getElementById('closeResetPanelButton');
+    const passwordResetMessage = document.getElementById('passwordResetMessage');
     const logoutButtons = document.querySelectorAll('.logout-action');
 
     const rutInput = document.getElementById('rutInput');
@@ -2644,6 +2773,7 @@
       loginScreen.hidden = false;
       appShell.hidden = true;
       document.body.classList.remove('role-admin', 'role-user');
+      hidePasswordResetPanel();
       window.setTimeout(() => loginUser.focus(), 50);
     };
 
@@ -2652,6 +2782,64 @@
       loginScreen.hidden = true;
       appShell.hidden = false;
       applyRoleUI(role);
+    };
+
+
+    const hidePasswordResetPanel = () => {
+      passwordResetPanel.hidden = true;
+      resetEmailInput.value = '';
+      passwordResetMessage.className = 'password-reset-message';
+      passwordResetMessage.textContent = '';
+    };
+
+    const showPasswordResetPanel = () => {
+      loginError.classList.remove('show');
+      passwordResetPanel.hidden = false;
+      passwordResetMessage.className = 'password-reset-message';
+      passwordResetMessage.textContent = '';
+      window.setTimeout(() => resetEmailInput.focus(), 40);
+    };
+
+    const requestPasswordReset = async () => {
+      const email = (resetEmailInput.value || '').trim().toLowerCase();
+
+      passwordResetMessage.className = 'password-reset-message';
+      passwordResetMessage.textContent = '';
+
+      if (!email) {
+        passwordResetMessage.className = 'password-reset-message show error';
+        passwordResetMessage.textContent = 'Debes ingresar un correo válido.';
+        resetEmailInput.focus();
+        return;
+      }
+
+      try {
+        requestResetButton.disabled = true;
+        requestResetButton.textContent = 'Enviando...';
+
+        const response = await fetch('/api/request-password-reset', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.ok) {
+          passwordResetMessage.className = 'password-reset-message show error';
+          passwordResetMessage.textContent = result.message || 'No se pudo procesar la solicitud.';
+          return;
+        }
+
+        passwordResetMessage.className = 'password-reset-message show success';
+        passwordResetMessage.textContent = result.message || 'Si el correo está registrado, enviaremos instrucciones.';
+      } catch {
+        passwordResetMessage.className = 'password-reset-message show error';
+        passwordResetMessage.textContent = 'No se pudo conectar con el servidor.';
+      } finally {
+        requestResetButton.disabled = false;
+        requestResetButton.textContent = 'Enviar enlace';
+      }
     };
 
     const handleLogin = async (event) => {
@@ -3412,6 +3600,15 @@
 
     window.addEventListener('beforeunload', stopScanner);
     loginForm.addEventListener('submit', handleLogin);
+    forgotPasswordToggle.addEventListener('click', showPasswordResetPanel);
+    requestResetButton.addEventListener('click', requestPasswordReset);
+    closeResetPanelButton.addEventListener('click', hidePasswordResetPanel);
+    resetEmailInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        requestPasswordReset();
+      }
+    });
     logoutButtons.forEach((button) => button.addEventListener('click', logout));
 
     createKeypad();
@@ -3429,7 +3626,7 @@
   </script>
 
   <footer class="site-footer">
-    Control de Atrasos v1.0 - Desarrollado por
+    Control de Atrasos - Desarrollado por
     <a href="https://ampliadesign.cl" target="_blank" rel="noopener noreferrer">ampliadesign.cl</a>
   </footer>
 
