@@ -41,7 +41,9 @@ function hashToken(token: string) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const email = String(body.email || "").trim().toLowerCase();
+    const email = String(body.email || "")
+      .trim()
+      .toLowerCase();
 
     if (!email) {
       return NextResponse.json(
@@ -71,7 +73,6 @@ export async function POST(request: Request) {
 
     const rawToken = crypto.randomBytes(32).toString("hex");
     const tokenHash = hashToken(rawToken);
-
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
 
     await supabase
@@ -90,12 +91,15 @@ export async function POST(request: Request) {
 
     if (insertError) {
       return NextResponse.json(
-        { ok: false, message: "No se pudo generar el token de recuperación." },
+        {
+          ok: false,
+          message: "No se pudo generar el token de recuperación.",
+        },
         { status: 500 }
       );
     }
 
-    const baseUrl = process.env.APP_BASE_URL || "http://localhost:3000";
+    const baseUrl = "https://atrasos.becarb.cl";
     const resetLink = `${baseUrl}/reset-password?token=${rawToken}`;
 
     const transporter = buildTransporter();
@@ -108,10 +112,11 @@ export async function POST(request: Request) {
         <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1d2430;">
           <h2 style="margin-bottom: 8px;">Recuperación de contraseña</h2>
           <p>Hola ${user.username},</p>
-          <p>Recibimos una solicitud para cambiar tu contraseña del sistema <strong>Control de Atrasos Becarb</strong>.</p>
           <p>
-            Haz click en el siguiente enlace para definir una nueva contraseña:
+            Recibimos una solicitud para cambiar tu contraseña del sistema
+            <strong>Control de Atrasos Becarb</strong>.
           </p>
+          <p>Haz click en el siguiente enlace para definir una nueva contraseña:</p>
           <p>
             <a href="${resetLink}" style="color: #1d74b7; font-weight: bold;">
               Cambiar contraseña
@@ -132,7 +137,10 @@ export async function POST(request: Request) {
         : "Error desconocido al solicitar recuperación";
 
     return NextResponse.json(
-      { ok: false, message },
+      {
+        ok: false,
+        message,
+      },
       { status: 500 }
     );
   }
