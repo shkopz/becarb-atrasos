@@ -590,7 +590,7 @@ export default function GestionDatosPage() {
               </div>
             </div>
 
-            <a href="/" style={backLinkStyle}>
+            <a href="https://atrasos.becarb.cl" style={backLinkStyle}>
               ← Volver al sistema
             </a>
           </div>
