@@ -91,7 +91,7 @@ export default function GestionDatosPage() {
         setLoading(true);
         setError("");
 
-        const response = await fetch(fetchUrl, { method: "GET" });
+        const response = await fetch(fetchUrl, { method: "GET", cache: "no-store" });
         const result: DataManagementResponse = await response.json();
 
         if (!response.ok || !result.ok) {
@@ -177,6 +177,14 @@ export default function GestionDatosPage() {
     setPage(1);
   }
 
+  function handleBackToSystem() {
+    try {
+      window.location.assign("/");
+    } catch {
+      window.location.href = "/";
+    }
+  }
+
   const records = data?.records || [];
   const courses = data?.course_options || [];
   const periods = data?.periods || [];
@@ -219,35 +227,46 @@ export default function GestionDatosPage() {
               flexWrap: "wrap",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "20px",
+                flexWrap: "wrap",
+                flex: 1,
+                minWidth: "280px",
+              }}
+            >
               <div
                 style={{
-                  width: "64px",
-                  height: "64px",
-                  borderRadius: "18px",
-                  background: "rgba(29,116,183,0.08)",
-                  display: "grid",
-                  placeItems: "center",
-                  overflow: "hidden",
-                  padding: "8px",
+                  width: "clamp(150px, 22vw, 230px)",
+                  height: "clamp(64px, 8vw, 92px)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
                 }}
               >
                 <img
                   src="https://becarb.cl/wp-content/uploads/2019/10/logoweb_becarb_trans.png"
                   alt="Logo Becarb"
-                  style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "contain",
+                    display: "block",
+                  }}
                 />
               </div>
 
-              <div>
+              <div style={{ minWidth: "260px", flex: 1 }}>
                 <p
                   style={{
                     margin: 0,
-                    fontSize: "12px",
-                    fontWeight: 800,
-                    letterSpacing: "0.08em",
-                    textTransform: "uppercase",
+                    fontSize: "15px",
+                    fontWeight: 400,
                     color: "#1d74b7",
+                    lineHeight: 1.2,
                   }}
                 >
                   Control y Auditoría
@@ -258,6 +277,7 @@ export default function GestionDatosPage() {
                     fontSize: "32px",
                     lineHeight: 1.1,
                     color: "#1d2430",
+                    fontWeight: 800,
                   }}
                 >
                   Gestión de Datos
@@ -276,20 +296,24 @@ export default function GestionDatosPage() {
               </div>
             </div>
 
-            <a
-              href="/"
+            <button
+              type="button"
+              onClick={handleBackToSystem}
               style={{
-                textDecoration: "none",
-                color: "#1d74b7",
-                fontWeight: 700,
-                fontSize: "14px",
-                padding: "10px 14px",
+                minHeight: "46px",
+                border: "1px solid rgba(29, 116, 183, 0.16)",
                 borderRadius: "14px",
+                padding: "0 16px",
                 background: "rgba(29, 116, 183, 0.08)",
+                color: "#1d74b7",
+                fontWeight: 800,
+                fontSize: "14px",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
               }}
             >
               ← Volver al sistema
-            </a>
+            </button>
           </div>
         </section>
 
@@ -305,7 +329,8 @@ export default function GestionDatosPage() {
             onSubmit={handleApplyFilters}
             style={{
               display: "grid",
-              gridTemplateColumns: "minmax(0, 1.4fr) minmax(220px, 0.8fr) minmax(240px, 0.9fr) auto auto",
+              gridTemplateColumns:
+                "minmax(0, 1.4fr) minmax(220px, 0.8fr) minmax(240px, 0.9fr) auto auto",
               gap: "12px",
               alignItems: "end",
             }}
@@ -457,15 +482,13 @@ export default function GestionDatosPage() {
                             style={nameButtonStyle}
                             title={record.email ? `Copiar ${record.email}` : "Sin correo registrado"}
                           >
-                            {record.nombre_completo}
+                            {formatDisplayName(record.nombre_completo)}
                           </button>
                         </td>
-                        <td style={tdStyle}>{record.rut_completo || record.rut_base}</td>
+                        <td style={tdStyle}>{formatRut(record.rut_completo || record.rut_base)}</td>
                         <td style={tdStyle}>{record.curso}</td>
                         <td style={tdStyle}>
-                          <span style={pillStyle(record.categoria)}>
-                            {record.categoria}
-                          </span>
+                          <span style={pillStyle(record.categoria)}>{record.categoria}</span>
                         </td>
                         <td style={tdStyle}>{record.source}</td>
                         <td style={tdStyle}>{record.created_by}</td>
@@ -631,10 +654,10 @@ function RankingCard({
                   style={nameButtonStyle}
                   title={item.email ? `Copiar ${item.email}` : "Sin correo registrado"}
                 >
-                  {item.nombre_completo}
+                  {formatDisplayName(item.nombre_completo)}
                 </button>
                 <div style={{ marginTop: "4px", fontSize: "13px", color: "#5f6570" }}>
-                  {item.curso}
+                  {formatRut(item.rut_completo || item.rut_base)} - {item.curso}
                 </div>
               </div>
 
@@ -665,6 +688,19 @@ function formatDate(value: string) {
   const [year, month, day] = value.split("-");
   if (!year || !month || !day) return value;
   return `${day}/${month}/${year}`;
+}
+
+function formatDisplayName(value: string) {
+  if (!value) return "";
+  return value
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\p{L}/gu, (char) => char.toUpperCase());
+}
+
+function formatRut(value: string) {
+  return (value || "").trim().toUpperCase();
 }
 
 const labelStyle: React.CSSProperties = {
