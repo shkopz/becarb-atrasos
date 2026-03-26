@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 type RecordRow = {
   id: number;
@@ -60,6 +60,28 @@ type DataManagementResponse = {
   message?: string;
 };
 
+type SessionValidationResult = {
+  ok: boolean;
+  role: string;
+  message: string;
+};
+
+type ToastState = {
+  tone: "success" | "error" | "info";
+  message: string;
+};
+
+type EmailTargetState = {
+  rut_base: string;
+  nombre: string;
+  curso: string;
+  email: string;
+};
+
+const SESSION_CHECK_INTERVAL_MS = 60_000;
+const DATA_REFRESH_INTERVAL_MS = 60_000;
+const AUTO_REFRESH_STORAGE_KEY = "becarb-gestion-datos-auto-refresh";
+
 export default function GestionDatosPage() {
   const [queryInput, setQueryInput] = useState("");
   const [courseInput, setCourseInput] = useState("");
@@ -72,7 +94,18 @@ export default function GestionDatosPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [data, setData] = useState<DataManagementResponse | null>(null);
-  const [copyMessage, setCopyMessage] = useState("");
+  const [toast, setToast] = useState<ToastState | null>(null);
+  const [sessionReady, setSessionReady] = useState(false);
+  const [sessionError, setSessionError] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(false);
+  const [emailTarget, setEmailTarget] = useState<EmailTargetState | null>(null);
+  const [emailComment, setEmailComment] = useState("");
+  const [sendingEmail, setSendingEmail] = useState(false);
+
+  const redirectTimerRef = useRef<number | null>(null);
+  const emailTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const fetchUrl = useMemo(() => {
     const params = new URLSearchParams();
@@ -84,6 +117,119 @@ export default function GestionDatosPage() {
   }, [page, query, course, month]);
 
   useEffect(() => {
+    try {
+      const savedValue = window.localStorage.getItem(AUTO_REFRESH_STORAGE_KEY);
+      setAutoRefreshEnabled(savedValue === "true");
+    } catch {
+      setAutoRefreshEnabled(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        AUTO_REFRESH_STORAGE_KEY,
+        autoRefreshEnabled ? "true" : "false"
+      );
+    } catch {
+      // Ignorar fallos de storage.
+    }
+  }, [autoRefreshEnabled]);
+
+  useEffect(() => {
+    return () => {
+      if (redirectTimerRef.current) {
+        window.clearTimeout(redirectTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function bootSession() {
+      const session = await validateSession();
+
+      if (cancelled) return;
+
+      if (!session.ok) {
+        setSessionReady(false);
+        setSessionError(session.message);
+        setLoading(false);
+
+        redirectTimerRef.current = window.setTimeout(() => {
+          window.location.href = "/";
+        }, 1800);
+
+        return;
+      }
+
+      setSessionReady(true);
+      setSessionError("");
+    }
+
+    bootSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!sessionReady) return;
+
+    const interval = window.setInterval(async () => {
+      const session = await validateSession();
+
+      if (!session.ok) {
+        setSessionReady(false);
+        setSessionError(session.message);
+        setLoading(false);
+
+        if (redirectTimerRef.current) {
+          window.clearTimeout(redirectTimerRef.current);
+        }
+
+        redirectTimerRef.current = window.setTimeout(() => {
+          window.location.href = "/";
+        }, 1800);
+      }
+    }, SESSION_CHECK_INTERVAL_MS);
+
+    return () => window.clearInterval(interval);
+  }, [sessionReady]);
+
+  useEffect(() => {
+    if (!sessionReady || !autoRefreshEnabled) return;
+
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        setRefreshKey((prev) => prev + 1);
+      }
+    }, DATA_REFRESH_INTERVAL_MS);
+
+    return () => window.clearInterval(interval);
+  }, [sessionReady, autoRefreshEnabled]);
+
+  useEffect(() => {
+    function handleVisibilityChange() {
+      if (
+        document.visibilityState === "visible" &&
+        sessionReady &&
+        autoRefreshEnabled
+      ) {
+        setRefreshKey((prev) => prev + 1);
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [sessionReady, autoRefreshEnabled]);
+
+  useEffect(() => {
+    if (!sessionReady) return;
+
     let cancelled = false;
 
     async function loadData() {
@@ -91,11 +237,24 @@ export default function GestionDatosPage() {
         setLoading(true);
         setError("");
 
-        const response = await fetch(fetchUrl, { method: "GET", cache: "no-store" });
+        const response = await fetch(fetchUrl, {
+          method: "GET",
+          cache: "no-store",
+          credentials: "include",
+        });
+
         const result: DataManagementResponse = await response.json();
 
+        if (response.status === 401 || response.status === 403) {
+          throw new Error(
+            result.message || "Tu sesión ya no permite acceder a esta página."
+          );
+        }
+
         if (!response.ok || !result.ok) {
-          throw new Error(result.message || "No se pudo cargar la gestión de datos.");
+          throw new Error(
+            result.message || "No se pudo cargar la gestión de datos."
+          );
         }
 
         if (!cancelled) {
@@ -110,8 +269,30 @@ export default function GestionDatosPage() {
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Error desconocido.");
+          const message =
+            err instanceof Error
+              ? err.message
+              : "Error desconocido al cargar la gestión de datos.";
+
+          setError(message);
           setData(null);
+
+          if (
+            /sesión|acceder a esta página|autorizado|autenticado|permiso/i.test(
+              message
+            )
+          ) {
+            setSessionReady(false);
+            setSessionError(message);
+
+            if (redirectTimerRef.current) {
+              window.clearTimeout(redirectTimerRef.current);
+            }
+
+            redirectTimerRef.current = window.setTimeout(() => {
+              window.location.href = "/";
+            }, 1800);
+          }
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -123,22 +304,46 @@ export default function GestionDatosPage() {
     return () => {
       cancelled = true;
     };
-  }, [fetchUrl, monthInput]);
+  }, [fetchUrl, monthInput, sessionReady, refreshKey]);
 
   useEffect(() => {
-    if (!copyMessage) return;
-    const timer = window.setTimeout(() => setCopyMessage(""), 2200);
+    if (!toast) return;
+    const timer = window.setTimeout(() => setToast(null), 2600);
     return () => window.clearTimeout(timer);
-  }, [copyMessage]);
+  }, [toast]);
+
+  useEffect(() => {
+    if (!emailTarget) return;
+
+    const timer = window.setTimeout(() => {
+      emailTextareaRef.current?.focus();
+    }, 50);
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape" && !sendingEmail) {
+        closeEmailModal();
+      }
+    }
+
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [emailTarget, sendingEmail]);
 
   async function copyEmail(email: string) {
     if (!email) {
-      setCopyMessage("Este estudiante no tiene correo registrado.");
+      setToast({
+        tone: "info",
+        message: "Este estudiante no tiene correo registrado.",
+      });
       return;
     }
 
     try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
+      if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(email);
       } else {
         const temp = document.createElement("textarea");
@@ -152,9 +357,15 @@ export default function GestionDatosPage() {
         temp.remove();
       }
 
-      setCopyMessage(`Correo copiado al portapapeles: ${email}`);
+      setToast({
+        tone: "success",
+        message: `Correo copiado al portapapeles: ${email}`,
+      });
     } catch {
-      setCopyMessage("No se pudo copiar el correo.");
+      setToast({
+        tone: "error",
+        message: "No se pudo copiar el correo.",
+      });
     }
   }
 
@@ -177,11 +388,73 @@ export default function GestionDatosPage() {
     setPage(1);
   }
 
-  function handleBackToSystem() {
+  function openEmailModal(record: RecordRow) {
+    if (!record.email) {
+      setToast({
+        tone: "info",
+        message: "Este estudiante no tiene correo registrado.",
+      });
+      return;
+    }
+
+    setEmailComment("");
+    setEmailTarget({
+      rut_base: record.rut_base,
+      nombre: formatDisplayName(record.nombre_completo),
+      curso: record.curso,
+      email: record.email,
+    });
+  }
+
+  function closeEmailModal() {
+    if (sendingEmail) return;
+    setEmailTarget(null);
+    setEmailComment("");
+  }
+
+  async function handleSendEmail() {
+    if (!emailTarget || sendingEmail) return;
+
     try {
-      window.location.assign("/");
-    } catch {
-      window.location.href = "/";
+      setSendingEmail(true);
+
+      const response = await fetch("/api/send-student-tardy-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        cache: "no-store",
+        body: JSON.stringify({
+          rut_base: emailTarget.rut_base,
+          comentario: emailComment.trim(),
+        }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok || !payload?.ok) {
+        throw new Error(
+          payload?.message || "No se pudo enviar el correo al estudiante."
+        );
+      }
+
+      setToast({
+        tone: "success",
+        message: "Correo enviado correctamente.",
+      });
+      setEmailTarget(null);
+      setEmailComment("");
+    } catch (err) {
+      setToast({
+        tone: "error",
+        message:
+          err instanceof Error
+            ? err.message
+            : "Ocurrió un error al enviar el correo.",
+      });
+    } finally {
+      setSendingEmail(false);
     }
   }
 
@@ -191,33 +464,54 @@ export default function GestionDatosPage() {
   const totalPages = data?.total_pages || 1;
   const totalRecords = data?.total_records || 0;
 
+  if (!sessionReady && sessionError) {
+    return (
+      <main style={mainStyle}>
+        <div style={containerStyle}>
+          <section style={cardStyle}>
+            <h1 style={{ margin: 0, fontSize: "28px", color: "#1d2430", fontWeight: 800 }}>
+              Gestión de Datos
+            </h1>
+            <div style={{ marginTop: "16px", ...errorBoxStyle }}>
+              {sessionError}
+            </div>
+            <p
+              style={{
+                margin: "16px 0 0",
+                color: "#5f6570",
+                fontSize: "14px",
+                lineHeight: 1.6,
+              }}
+            >
+              Serás redirigido al sistema principal en unos segundos.
+            </p>
+            <div style={{ marginTop: "18px" }}>
+              <a href="/" style={backLinkStyle}>
+                ← Volver ahora
+              </a>
+            </div>
+          </section>
+        </div>
+      </main>
+    );
+  }
+
+  if (!sessionReady) {
+    return (
+      <main style={mainStyle}>
+        <div style={containerStyle}>
+          <section style={cardStyle}>
+            <div style={infoBoxStyle}>Validando sesión y permisos...</div>
+          </section>
+        </div>
+      </main>
+    );
+  }
+
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        padding: "24px",
-        background: "linear-gradient(180deg, #f8fbfd 0%, #eef6fb 100%)",
-        fontFamily: "Inter, Arial, sans-serif",
-        color: "#1d2430",
-      }}
-    >
-      <div
-        style={{
-          width: "min(1240px, 100%)",
-          margin: "0 auto",
-          display: "flex",
-          flexDirection: "column",
-          gap: "18px",
-        }}
-      >
-        <section
-          style={{
-            background: "#ffffff",
-            borderRadius: "24px",
-            padding: "24px",
-            boxShadow: "0 18px 40px rgba(14, 34, 60, 0.12)",
-          }}
-        >
+    <main style={mainStyle}>
+      <div style={containerStyle}>
+        <section style={cardStyle}>
           <div
             style={{
               display: "flex",
@@ -296,41 +590,18 @@ export default function GestionDatosPage() {
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={handleBackToSystem}
-              style={{
-                minHeight: "46px",
-                border: "1px solid rgba(29, 116, 183, 0.16)",
-                borderRadius: "14px",
-                padding: "0 16px",
-                background: "rgba(29, 116, 183, 0.08)",
-                color: "#1d74b7",
-                fontWeight: 800,
-                fontSize: "14px",
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-              }}
-            >
+            <a href="/" style={backLinkStyle}>
               ← Volver al sistema
-            </button>
+            </a>
           </div>
         </section>
 
-        <section
-          style={{
-            background: "#ffffff",
-            borderRadius: "24px",
-            padding: "24px",
-            boxShadow: "0 18px 40px rgba(14, 34, 60, 0.12)",
-          }}
-        >
+        <section style={cardStyle}>
           <form
             onSubmit={handleApplyFilters}
             style={{
               display: "grid",
-              gridTemplateColumns:
-                "minmax(0, 1.4fr) minmax(220px, 0.8fr) minmax(240px, 0.9fr) auto auto",
+              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
               gap: "12px",
               alignItems: "end",
             }}
@@ -381,58 +652,94 @@ export default function GestionDatosPage() {
               Aplicar filtros
             </button>
 
-            <button type="button" onClick={handleClearFilters} style={secondaryButtonStyle}>
+            <button
+              type="button"
+              onClick={handleClearFilters}
+              style={secondaryButtonStyle}
+            >
               Limpiar
             </button>
           </form>
         </section>
 
-        {copyMessage ? (
-          <div
-            style={{
-              position: "fixed",
-              right: "20px",
-              bottom: "20px",
-              zIndex: 9999,
-              maxWidth: "320px",
-              borderRadius: "16px",
-              padding: "14px 16px",
-              background: "rgba(11, 159, 107, 0.96)",
-              color: "#ffffff",
-              fontSize: "14px",
-              fontWeight: 700,
-              boxShadow: "0 14px 30px rgba(11,159,107,0.24)",
-            }}
-          >
-            {copyMessage}
-          </div>
-        ) : null}
+        {toast ? <Toast tone={toast.tone} message={toast.message} /> : null}
 
-        <section
-          style={{
-            background: "#ffffff",
-            borderRadius: "24px",
-            padding: "24px",
-            boxShadow: "0 18px 40px rgba(14, 34, 60, 0.12)",
-          }}
-        >
+        <section style={cardStyle}>
           <div
             style={{
               display: "flex",
               justifyContent: "space-between",
-              alignItems: "center",
-              gap: "12px",
+              alignItems: "flex-start",
+              gap: "16px",
               marginBottom: "16px",
               flexWrap: "wrap",
             }}
           >
             <div>
-              <h2 style={{ margin: 0, fontSize: "24px", color: "#1d2430" }}>
+              <h2
+                style={{
+                  margin: 0,
+                  fontSize: "24px",
+                  color: "#1d2430",
+                  fontWeight: 800,
+                }}
+              >
                 Marcajes registrados
               </h2>
               <p style={{ margin: "6px 0 0", color: "#5f6570", fontSize: "14px" }}>
                 Página {page} de {totalPages} · {totalRecords} registro(s)
               </p>
+            </div>
+
+            <label style={toggleWrapperStyle}>
+              <span style={{ fontSize: "13px", color: "#5f6570", fontWeight: 700 }}>
+                Actualización automática
+              </span>
+
+              <button
+                type="button"
+                aria-pressed={autoRefreshEnabled}
+                onClick={() => setAutoRefreshEnabled((prev) => !prev)}
+                style={toggleButtonStyle(autoRefreshEnabled)}
+                title={
+                  autoRefreshEnabled
+                    ? "Desactivar actualización automática"
+                    : "Activar actualización automática"
+                }
+              >
+                <span style={toggleKnobStyle(autoRefreshEnabled)} />
+              </button>
+
+              <span
+                style={{
+                  fontSize: "13px",
+                  color: autoRefreshEnabled ? "#0b9f6b" : "#5f6570",
+                  fontWeight: 800,
+                  minWidth: "34px",
+                  textAlign: "right",
+                }}
+              >
+                {autoRefreshEnabled ? "ON" : "OFF"}
+              </span>
+            </label>
+          </div>
+
+          <div style={legendContainerStyle}>
+            <span style={legendTitleStyle}>Leyenda de categorías:</span>
+
+            <div style={legendItemStyle}>
+              <span style={pillStyle("A")}>A</span>
+              <span style={legendTextStyle}>Atraso leve</span>
+            </div>
+
+            <div style={legendItemStyle}>
+              <span style={pillStyle("B")}>B</span>
+              <span style={legendTextStyle}>Atraso intermedio</span>
+            </div>
+
+            <div style={legendItemStyle}>
+              <span style={pillStyle("C")}>C</span>
+              <span style={legendTextStyle}>Atraso grave</span>
             </div>
           </div>
 
@@ -461,7 +768,7 @@ export default function GestionDatosPage() {
                         "RUT",
                         "Curso",
                         "Categoría",
-                        "Origen",
+                        "Correo",
                         "Registrado por",
                       ].map((header) => (
                         <th key={header} style={thStyle}>
@@ -480,17 +787,41 @@ export default function GestionDatosPage() {
                             type="button"
                             onClick={() => copyEmail(record.email)}
                             style={nameButtonStyle}
-                            title={record.email ? `Copiar ${record.email}` : "Sin correo registrado"}
+                            title={
+                              record.email
+                                ? `Copiar ${record.email}`
+                                : "Sin correo registrado"
+                            }
                           >
                             {formatDisplayName(record.nombre_completo)}
                           </button>
                         </td>
-                        <td style={tdStyle}>{formatRut(record.rut_completo || record.rut_base)}</td>
+                        <td style={tdStyle}>
+                          {formatRut(record.rut_completo || record.rut_base)}
+                        </td>
                         <td style={tdStyle}>{record.curso}</td>
                         <td style={tdStyle}>
-                          <span style={pillStyle(record.categoria)}>{record.categoria}</span>
+                          <span style={pillStyle(record.categoria)}>
+                            {record.categoria}
+                          </span>
                         </td>
-                        <td style={tdStyle}>{record.source}</td>
+                        <td style={tdStyle}>
+                          <button
+                            type="button"
+                            onClick={() => openEmailModal(record)}
+                            disabled={!record.email}
+                            style={
+                              record.email ? emailButtonStyle : disabledEmailButtonStyle
+                            }
+                            title={
+                              record.email
+                                ? `Enviar correo a ${record.email}`
+                                : "Sin correo registrado"
+                            }
+                          >
+                            {record.email ? "Enviar correo" : "Sin correo"}
+                          </button>
+                        </td>
                         <td style={tdStyle}>{record.created_by}</td>
                       </tr>
                     ))}
@@ -537,7 +868,7 @@ export default function GestionDatosPage() {
         <section
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+            gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
             gap: "18px",
           }}
         >
@@ -581,6 +912,94 @@ export default function GestionDatosPage() {
           </a>
         </footer>
       </div>
+
+      {emailTarget ? (
+        <div style={modalOverlayStyle} onClick={closeEmailModal}>
+          <div
+            style={modalCardStyle}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3
+              style={{
+                margin: 0,
+                fontSize: "22px",
+                color: "#1d2430",
+                fontWeight: 800,
+              }}
+            >
+              Enviar correo al estudiante
+            </h3>
+
+            <p
+              style={{
+                margin: "10px 0 0",
+                color: "#5f6570",
+                fontSize: "14px",
+                lineHeight: 1.6,
+              }}
+            >
+              ¿Desea agregar algún comentario?
+            </p>
+
+            <div style={{ marginTop: "14px", color: "#1d2430", fontSize: "14px" }}>
+              <strong>Estudiante:</strong> {emailTarget.nombre}
+              <br />
+              <strong>Curso:</strong> {emailTarget.curso || "Sin curso"}
+              <br />
+              <strong>Correo:</strong> {emailTarget.email}
+            </div>
+
+            <textarea
+              ref={emailTextareaRef}
+              value={emailComment}
+              onChange={(event) => setEmailComment(event.target.value)}
+              placeholder="Escribe aquí un comentario opcional para incluir en el correo."
+              style={textareaStyle}
+              rows={6}
+              disabled={sendingEmail}
+            />
+
+            <p
+              style={{
+                margin: "10px 0 0",
+                color: "#5f6570",
+                fontSize: "13px",
+                lineHeight: 1.6,
+              }}
+            >
+              El correo informará la cantidad de atrasos vigentes del estudiante y agregará este comentario debajo del apartado <strong>Comentarios</strong>.
+            </p>
+
+            <div
+              style={{
+                marginTop: "18px",
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: "12px",
+                flexWrap: "wrap",
+              }}
+            >
+              <button
+                type="button"
+                onClick={closeEmailModal}
+                style={secondaryButtonStyle}
+                disabled={sendingEmail}
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSendEmail}
+                style={primaryButtonStyle}
+                disabled={sendingEmail}
+              >
+                {sendingEmail ? "Enviando..." : "Enviar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
@@ -599,16 +1018,25 @@ function RankingCard({
   onCopyEmail: (email: string) => void;
 }) {
   return (
-    <section
-      style={{
-        background: "#ffffff",
-        borderRadius: "24px",
-        padding: "24px",
-        boxShadow: "0 18px 40px rgba(14, 34, 60, 0.12)",
-      }}
-    >
-      <h2 style={{ margin: 0, fontSize: "22px", color: "#1d2430" }}>{title}</h2>
-      <p style={{ margin: "8px 0 0", color: "#5f6570", fontSize: "14px", lineHeight: 1.5 }}>
+    <section style={cardStyle}>
+      <h2
+        style={{
+          margin: 0,
+          fontSize: "22px",
+          color: "#1d2430",
+          fontWeight: 800,
+        }}
+      >
+        {title}
+      </h2>
+      <p
+        style={{
+          margin: "8px 0 0",
+          color: "#5f6570",
+          fontSize: "14px",
+          lineHeight: 1.5,
+        }}
+      >
         {subtitle}
       </p>
 
@@ -683,6 +1111,115 @@ function RankingCard({
   );
 }
 
+function Toast({
+  tone,
+  message,
+}: {
+  tone: "success" | "error" | "info";
+  message: string;
+}) {
+  const toneMap = {
+    success: {
+      background: "rgba(11, 159, 107, 0.96)",
+      boxShadow: "0 14px 30px rgba(11,159,107,0.24)",
+    },
+    error: {
+      background: "rgba(214, 54, 73, 0.96)",
+      boxShadow: "0 14px 30px rgba(214,54,73,0.24)",
+    },
+    info: {
+      background: "rgba(29, 116, 183, 0.96)",
+      boxShadow: "0 14px 30px rgba(29,116,183,0.24)",
+    },
+  } as const;
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        right: "20px",
+        bottom: "20px",
+        zIndex: 9999,
+        maxWidth: "360px",
+        borderRadius: "16px",
+        padding: "14px 16px",
+        color: "#ffffff",
+        fontSize: "14px",
+        fontWeight: 700,
+        background: toneMap[tone].background,
+        boxShadow: toneMap[tone].boxShadow,
+      }}
+    >
+      {message}
+    </div>
+  );
+}
+
+async function validateSession(): Promise<SessionValidationResult> {
+  try {
+    const response = await fetch("/api/session", {
+      method: "GET",
+      cache: "no-store",
+      credentials: "include",
+    });
+
+    const payload = await response.json().catch(() => ({}));
+
+    const role = normalizeRole(
+      payload?.user?.role ||
+        payload?.role ||
+        payload?.user?.tipo ||
+        payload?.tipo ||
+        ""
+    );
+
+    const authenticated = Boolean(
+      payload?.authenticated ??
+        payload?.isAuthenticated ??
+        payload?.logged_in ??
+        payload?.loggedIn ??
+        payload?.user ??
+        payload?.session
+    );
+
+    if (!response.ok || !authenticated) {
+      return {
+        ok: false,
+        role,
+        message: "Tu sesión expiró o ya no está activa. Vuelve a iniciar sesión.",
+      };
+    }
+
+    if (!["admin", "administrador", "superadmin"].includes(role)) {
+      return {
+        ok: false,
+        role,
+        message: "No tienes permisos para acceder a Gestión de Datos.",
+      };
+    }
+
+    return {
+      ok: true,
+      role,
+      message: "",
+    };
+  } catch {
+    return {
+      ok: false,
+      role: "",
+      message: "No se pudo validar tu sesión. Vuelve al sistema principal.",
+    };
+  }
+}
+
+function normalizeRole(value: string) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .trim();
+}
+
 function formatDate(value: string) {
   if (!value) return "";
   const [year, month, day] = value.split("-");
@@ -702,6 +1239,45 @@ function formatDisplayName(value: string) {
 function formatRut(value: string) {
   return (value || "").trim().toUpperCase();
 }
+
+const mainStyle: React.CSSProperties = {
+  minHeight: "100vh",
+  padding: "24px",
+  background: "linear-gradient(180deg, #f8fbfd 0%, #eef6fb 100%)",
+  fontFamily: "Inter, Arial, sans-serif",
+  color: "#1d2430",
+};
+
+const containerStyle: React.CSSProperties = {
+  width: "min(1240px, 100%)",
+  margin: "0 auto",
+  display: "flex",
+  flexDirection: "column",
+  gap: "18px",
+};
+
+const cardStyle: React.CSSProperties = {
+  background: "#ffffff",
+  borderRadius: "24px",
+  padding: "24px",
+  boxShadow: "0 18px 40px rgba(14, 34, 60, 0.12)",
+};
+
+const backLinkStyle: React.CSSProperties = {
+  minHeight: "46px",
+  border: "1px solid rgba(29, 116, 183, 0.16)",
+  borderRadius: "14px",
+  padding: "0 16px",
+  background: "rgba(29, 116, 183, 0.08)",
+  color: "#1d74b7",
+  fontWeight: 800,
+  fontSize: "14px",
+  whiteSpace: "nowrap",
+  textDecoration: "none",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+};
 
 const labelStyle: React.CSSProperties = {
   display: "flex",
@@ -723,6 +1299,21 @@ const inputStyle: React.CSSProperties = {
   outline: "none",
   boxSizing: "border-box",
   background: "#fff",
+};
+
+const textareaStyle: React.CSSProperties = {
+  width: "100%",
+  marginTop: "16px",
+  border: "1px solid rgba(29, 116, 183, 0.18)",
+  borderRadius: "16px",
+  padding: "14px",
+  fontSize: "15px",
+  color: "#1d2430",
+  outline: "none",
+  boxSizing: "border-box",
+  background: "#fff",
+  resize: "vertical",
+  minHeight: "140px",
 };
 
 const primaryButtonStyle: React.CSSProperties = {
@@ -753,6 +1344,89 @@ const disabledButtonStyle: React.CSSProperties = {
   ...secondaryButtonStyle,
   opacity: 0.45,
   cursor: "default",
+};
+
+const emailButtonStyle: React.CSSProperties = {
+  minHeight: "38px",
+  border: "1px solid rgba(29, 116, 183, 0.18)",
+  borderRadius: "12px",
+  padding: "0 12px",
+  background: "rgba(29, 116, 183, 0.08)",
+  color: "#1d74b7",
+  fontWeight: 800,
+  fontSize: "13px",
+  cursor: "pointer",
+  whiteSpace: "nowrap",
+};
+
+const disabledEmailButtonStyle: React.CSSProperties = {
+  ...emailButtonStyle,
+  opacity: 0.45,
+  cursor: "default",
+};
+
+const toggleWrapperStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "10px",
+  flexWrap: "wrap",
+};
+
+function toggleButtonStyle(active: boolean): React.CSSProperties {
+  return {
+    position: "relative",
+    width: "56px",
+    height: "30px",
+    border: "none",
+    borderRadius: "999px",
+    cursor: "pointer",
+    background: active ? "#0b9f6b" : "rgba(95, 101, 112, 0.30)",
+    transition: "background 0.2s ease",
+    padding: 0,
+  };
+}
+
+function toggleKnobStyle(active: boolean): React.CSSProperties {
+  return {
+    position: "absolute",
+    top: "3px",
+    left: active ? "29px" : "3px",
+    width: "24px",
+    height: "24px",
+    borderRadius: "999px",
+    background: "#ffffff",
+    boxShadow: "0 4px 12px rgba(14, 34, 60, 0.18)",
+    transition: "left 0.2s ease",
+  };
+}
+
+const legendContainerStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "12px",
+  flexWrap: "wrap",
+  padding: "14px 16px",
+  borderRadius: "18px",
+  background: "rgba(29, 116, 183, 0.05)",
+  marginBottom: "16px",
+};
+
+const legendTitleStyle: React.CSSProperties = {
+  fontSize: "13px",
+  color: "#5f6570",
+  fontWeight: 800,
+};
+
+const legendItemStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "8px",
+};
+
+const legendTextStyle: React.CSSProperties = {
+  fontSize: "13px",
+  color: "#1d2430",
+  fontWeight: 700,
 };
 
 const infoBoxStyle: React.CSSProperties = {
@@ -804,6 +1478,24 @@ const nameButtonStyle: React.CSSProperties = {
   fontSize: "14px",
   textDecoration: "underline",
   textUnderlineOffset: "2px",
+};
+
+const modalOverlayStyle: React.CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(14, 34, 60, 0.48)",
+  display: "grid",
+  placeItems: "center",
+  padding: "20px",
+  zIndex: 10000,
+};
+
+const modalCardStyle: React.CSSProperties = {
+  width: "min(620px, 100%)",
+  background: "#ffffff",
+  borderRadius: "24px",
+  padding: "24px",
+  boxShadow: "0 24px 60px rgba(14, 34, 60, 0.20)",
 };
 
 function pillStyle(value: string): React.CSSProperties {

@@ -14,10 +14,6 @@ function normalizeText(value: string) {
     .trim();
 }
 
-function pad(n: number) {
-  return String(n).padStart(2, "0");
-}
-
 function getChileCurrentMonthKey() {
   const now = new Date();
 
@@ -48,8 +44,81 @@ function monthNameEs(month: number) {
   ][month - 1];
 }
 
+function normalizeRole(value: string) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .trim();
+}
+
+async function validateRequestSession(request: Request) {
+  const sessionUrl = new URL("/api/session", request.url);
+
+  const response = await fetch(sessionUrl.toString(), {
+    method: "GET",
+    headers: {
+      cookie: request.headers.get("cookie") || "",
+    },
+    cache: "no-store",
+  });
+
+  const payload = await response.json().catch(() => ({}));
+
+  const role = normalizeRole(
+    payload?.user?.role ||
+      payload?.role ||
+      payload?.user?.tipo ||
+      payload?.tipo ||
+      ""
+  );
+
+  const authenticated = Boolean(
+    payload?.authenticated ??
+      payload?.isAuthenticated ??
+      payload?.logged_in ??
+      payload?.loggedIn ??
+      payload?.user ??
+      payload?.session
+  );
+
+  if (!response.ok || !authenticated) {
+    return {
+      ok: false,
+      status: 401,
+      message: "Tu sesión expiró o ya no está activa.",
+      role,
+    };
+  }
+
+  if (!["admin", "administrador", "superadmin"].includes(role)) {
+    return {
+      ok: false,
+      status: 403,
+      message: "No tienes permisos para acceder a Gestión de Datos.",
+      role,
+    };
+  }
+
+  return {
+    ok: true,
+    status: 200,
+    message: "",
+    role,
+  };
+}
+
 export async function GET(request: Request) {
   try {
+    const session = await validateRequestSession(request);
+
+    if (!session.ok) {
+      return NextResponse.json(
+        { ok: false, message: session.message },
+        { status: session.status }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
 
     const page = Math.max(Number(searchParams.get("page") || 1), 1);
@@ -167,7 +236,6 @@ export async function GET(request: Request) {
     const safePage = Math.min(page, totalPages);
     const start = (safePage - 1) * pageSize;
     const end = start + pageSize;
-
     const paginatedRecords = filteredRecords.slice(start, end);
 
     const courseOptions = [...new Set(
@@ -229,25 +297,32 @@ export async function GET(request: Request) {
       )
       .slice(0, 5);
 
-    return NextResponse.json({
-      ok: true,
-      filters: {
-        query,
-        course,
-        month,
-        page: safePage,
-        page_size: pageSize,
+    return NextResponse.json(
+      {
+        ok: true,
+        filters: {
+          query,
+          course,
+          month,
+          page: safePage,
+          page_size: pageSize,
+        },
+        total_records: totalRecords,
+        total_pages: totalPages,
+        course_options: courseOptions,
+        periods,
+        records: paginatedRecords,
+        rankings: {
+          historical: historicalRanking,
+          current: currentRanking,
+        },
       },
-      total_records: totalRecords,
-      total_pages: totalPages,
-      course_options: courseOptions,
-      periods,
-      records: paginatedRecords,
-      rankings: {
-        historical: historicalRanking,
-        current: currentRanking,
-      },
-    });
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        },
+      }
+    );
   } catch (error) {
     const message =
       error instanceof Error
