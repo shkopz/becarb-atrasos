@@ -38,18 +38,32 @@ function hashToken(token: string) {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
 
+function isValidBecarbEmail(email: string) {
+  const normalized = email.trim().toLowerCase();
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(normalized) && normalized.endsWith("@becarb.cl");
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const email = String(body.email || "")
-      .trim()
-      .toLowerCase();
+    const email = String(body.email || "").trim().toLowerCase();
 
     if (!email) {
       return NextResponse.json(
         {
           ok: false,
-          message: "Debes ingresar un correo válido.",
+          message: "Debes ingresar un correo electrónico.",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (!isValidBecarbEmail(email)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "Debes ingresar un correo válido del dominio @becarb.cl.",
         },
         { status: 400 }
       );
@@ -91,10 +105,7 @@ export async function POST(request: Request) {
 
     if (insertError) {
       return NextResponse.json(
-        {
-          ok: false,
-          message: "No se pudo generar el token de recuperación.",
-        },
+        { ok: false, message: "No se pudo generar el token de recuperación." },
         { status: 500 }
       );
     }
@@ -112,10 +123,7 @@ export async function POST(request: Request) {
         <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1d2430;">
           <h2 style="margin-bottom: 8px;">Recuperación de contraseña</h2>
           <p>Hola ${user.username},</p>
-          <p>
-            Recibimos una solicitud para cambiar tu contraseña del sistema
-            <strong>Control de Atrasos Becarb</strong>.
-          </p>
+          <p>Recibimos una solicitud para cambiar tu contraseña del sistema <strong>Control de Atrasos Becarb</strong>.</p>
           <p>Haz click en el siguiente enlace para definir una nueva contraseña:</p>
           <p>
             <a href="${resetLink}" style="color: #1d74b7; font-weight: bold;">
@@ -137,10 +145,7 @@ export async function POST(request: Request) {
         : "Error desconocido al solicitar recuperación";
 
     return NextResponse.json(
-      {
-        ok: false,
-        message,
-      },
+      { ok: false, message },
       { status: 500 }
     );
   }
