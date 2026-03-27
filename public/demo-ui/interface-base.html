@@ -35,6 +35,10 @@
     }
 
     body { min-height: 100vh; }
+    body.scanner-open {
+      overflow: hidden;
+      touch-action: none;
+    }
 
     .shell {
       width: min(1180px, calc(100vw - 24px));
@@ -452,9 +456,70 @@
     .scan-frame {
       width: min(74vw, 360px);
       height: min(74vw, 360px);
-      border: 3px solid rgba(255,255,255,0.86);
+      border: 2px solid rgba(255,255,255,0.86);
       border-radius: 28px;
-      box-shadow: 0 0 0 999px rgba(0,0,0,0.26);
+      box-shadow: 0 0 0 999px rgba(0,0,0,0.42);
+      position: relative;
+      overflow: visible;
+    }
+
+    .scan-frame-corners span {
+      position: absolute;
+      width: 34px;
+      height: 34px;
+      border-color: #ffffff;
+      border-style: solid;
+      border-width: 0;
+    }
+
+    .scan-frame-corners span:nth-child(1) {
+      top: -2px;
+      left: -2px;
+      border-top-width: 5px;
+      border-left-width: 5px;
+      border-top-left-radius: 16px;
+    }
+
+    .scan-frame-corners span:nth-child(2) {
+      top: -2px;
+      right: -2px;
+      border-top-width: 5px;
+      border-right-width: 5px;
+      border-top-right-radius: 16px;
+    }
+
+    .scan-frame-corners span:nth-child(3) {
+      bottom: -2px;
+      left: -2px;
+      border-bottom-width: 5px;
+      border-left-width: 5px;
+      border-bottom-left-radius: 16px;
+    }
+
+    .scan-frame-corners span:nth-child(4) {
+      bottom: -2px;
+      right: -2px;
+      border-bottom-width: 5px;
+      border-right-width: 5px;
+      border-bottom-right-radius: 16px;
+    }
+
+    .scan-frame-label {
+      position: absolute;
+      left: 50%;
+      bottom: -54px;
+      transform: translateX(-50%);
+      min-width: max-content;
+      padding: 9px 14px;
+      border-radius: 999px;
+      background: rgba(8, 17, 30, 0.78);
+      color: rgba(255,255,255,0.96);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.01em;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.18);
+      backdrop-filter: blur(8px);
+      text-align: center;
     }
 
     .scan-note {
@@ -473,6 +538,11 @@
       .scan-frame {
         width: min(78vw, 320px);
         height: min(78vw, 320px);
+      }
+      .scan-frame-label {
+        bottom: -48px;
+        font-size: 12px;
+        padding: 8px 12px;
       }
     }
 
@@ -639,22 +709,7 @@
       color: var(--muted);
     }
 
-    .sample-list {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-top: 12px;
-    }
 
-    .chip {
-      background: white;
-      border-radius: 999px;
-      border: 1px solid #d8e6f2;
-      padding: 10px 12px;
-      color: var(--becarb-deep);
-      font-size: 13px;
-      font-weight: 800;
-    }
 
     .table-wrap {
       overflow: auto;
@@ -1580,7 +1635,7 @@
           <p>
             Esta versión de demostración simula el flujo de portería: lectura de RUT sin dígito verificador,
             cruce con la base de estudiantes, bloqueo de duplicados en el día, conteo mensual de atrasos y
-            preparación del informe final con notificación al correo del alumno.
+            preparación del informe final con notificación simulada al correo del alumno.
           </p>
         </div>
       </article>
@@ -1609,6 +1664,7 @@
           <span class="badge-inline" id="monthBadge">Periodo actual</span>
         </div>
 
+
         <div class="entry-wrap">
           <div class="entry-box">
             <h3>Ingreso manual</h3>
@@ -1629,7 +1685,8 @@
             </div>
 
             <div class="helper-row">
-              <div class="helper">Ingresa o pega el RUT sin dígito verificador. El sistema acepta 8 o 9 dígitos y el QR funciona igual.</div>
+              <div class="helper">Ingresa o pega el RUT sin dígito verificador. Puedes ingresar el RUT base o el RUT completo con guión. El sistema normaliza ambos formatos.</div>
+              <button class="btn btn-secondary" id="pasteRutButton" type="button">📋 Pegar RUT</button>
             </div>
 
             <div class="keypad" id="keypad"></div>
@@ -1655,7 +1712,14 @@
                 <div class="scan-viewport">
                   <video id="qrVideo" playsinline muted></video>
                   <canvas id="qrCanvas" hidden></canvas>
-                  <div class="scan-overlay"><div class="scan-frame"></div></div>
+                  <div class="scan-overlay">
+                    <div class="scan-frame">
+                      <div class="scan-frame-corners">
+                        <span></span><span></span><span></span><span></span>
+                      </div>
+                      <div class="scan-frame-label">Ubica el QR dentro del recuadro</div>
+                    </div>
+                  </div>
                 </div>
                 <div class="scan-note" id="scanNote">
                   Apunta la cámara al QR que contiene solo el número de RUT. Si el navegador no soporta lectura QR,
@@ -1712,7 +1776,7 @@
             <li>El cruce se hace con la base demo de estudiantes.</li>
             <li>Si el alumno ya fue registrado hoy, se bloquea el duplicado.</li>
             <li>La alerta aparece cuando supera 3 atrasos en el mes.</li>
-            <li>El envío de correo se realiza desde el panel de notificación a estudiantes.</li>
+            <li>El envío de correo está simulado en esta etapa.</li>
             <li>Los reseteos individuales quedan registrados con fecha, hora y usuario.</li>
             <li>El cierre mensual automático a inspectoría se simula en esta demo.</li>
           </ul>
@@ -1763,13 +1827,13 @@
       <div class="panel-header">
         <div>
           <h2 class="panel-title">Informe mensual · alumnos con 3 o más atrasos vigentes</h2>
-          <p class="panel-sub">Exporta el informe en formato Excel y gestiona la notificación final del período activo. Haz click en un correo para copiarlo al portapapeles.</p>
+          <p class="panel-sub">Exporta el informe en formato Excel y simula la notificación final del período activo. Haz click en un correo para copiarlo al portapapeles.</p>
         </div>
       </div>
 
       <div class="report-actions">
         <button class="btn btn-secondary" id="exportEmailsButton">Exportar Excel</button>
-        <button class="btn btn-primary" id="simulateSendButton">Notificar estudiantes</button>
+        <button class="btn btn-primary" id="simulateSendButton">Enviar notificación simulada</button>
       </div>
 
       <div class="status info show" id="reportStatusBox">
@@ -1794,6 +1858,26 @@
             <tr><td colspan="8" class="empty">Aún no hay alumnos con 3 o más atrasos vigentes en este mes.</td></tr>
           </tbody>
         </table>
+      </div>
+    </section>
+    <section class="panel admin-only" id="periodExportPanel">
+      <div class="panel-header">
+        <div>
+          <h2 class="panel-title">Exportar meses anteriores</h2>
+          <p class="panel-sub">Selecciona un período, incluyendo el mes en curso, para descargar el Excel completo o enviarlo al correo <strong>inspectoria@becarb.cl</strong>.</p>
+        </div>
+      </div>
+
+      <div class="period-inline">
+        <select class="period-select" id="reportPeriodSelect" aria-label="Seleccionar período de informe">
+          <option value="">Cargando períodos...</option>
+        </select>
+        <button class="btn btn-secondary" id="downloadPeriodButton">Descargar Excel</button>
+        <button class="btn btn-primary" id="sendPeriodButton">Enviar al correo</button>
+      </div>
+
+      <div class="status info show" id="periodExportStatusBox">
+        El selector reúne meses con registros y siempre incluye el mes en curso.
       </div>
     </section>
 
@@ -1936,6 +2020,7 @@
     let dashboardRecentAccesses = [];
     let resetLogsData = [];
     let alertStudentsData = [];
+    let reportPeriodsData = [];
 
     const DEFAULT_USER = '';
     const LOGIN_STORAGE_KEY = 'becarb-atrasos-session:auth';
@@ -1979,13 +2064,17 @@
     const studentStatusCard = document.getElementById('studentStatusCard');
     const registerButton = document.getElementById('registerButton');
     const clearButton = document.getElementById('clearButton');
-    const sampleList = document.getElementById('sampleList');
+    const pasteRutButton = document.getElementById('pasteRutButton');
     const statsGrid = document.getElementById('statsGrid');
     const todayTableBody = document.getElementById('todayTableBody');
     const reportTableBody = document.getElementById('reportTableBody');
     const reportStatusBox = document.getElementById('reportStatusBox');
     const exportEmailsButton = document.getElementById('exportEmailsButton');
     const simulateSendButton = document.getElementById('simulateSendButton');
+    const reportPeriodSelect = document.getElementById('reportPeriodSelect');
+    const downloadPeriodButton = document.getElementById('downloadPeriodButton');
+    const sendPeriodButton = document.getElementById('sendPeriodButton');
+    const periodExportStatusBox = document.getElementById('periodExportStatusBox');
     const resetStudentButton = document.getElementById('resetStudentButton');
     const resetLogTableBody = document.getElementById('resetLogTableBody');
     const automationTableBody = document.getElementById('automationTableBody');
@@ -2025,7 +2114,23 @@
     const pad2 = (value) => String(value).padStart(2, '0');
     const getDateKey = (date) => `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
     const getMonthKeyFromDate = (date) => `${date.getFullYear()}-${pad2(date.getMonth() + 1)}`;
-    const sanitizeRutNumber = (value) => (value || '').replace(/\D/g, '').slice(0, 9);
+    const sanitizeRutNumber = (value) => {
+      const raw = String(value || '').trim().toUpperCase();
+      if (!raw) return '';
+
+      if (raw.includes('-')) {
+        const [base] = raw.split('-');
+        return String(base || '').replace(/\D/g, '').slice(0, 9);
+      }
+
+      const digitsOnly = raw.replace(/\D/g, '');
+
+      if (digitsOnly.length === 9) {
+        return digitsOnly.slice(0, 8);
+      }
+
+      return digitsOnly.slice(0, 9);
+    };
 
     const monthName = (monthNumber) => [
       'enero','febrero','marzo','abril','mayo','junio',
@@ -2040,6 +2145,26 @@
     const previousMonthKey = (date = new Date()) => {
       const d = new Date(date.getFullYear(), date.getMonth() - 1, 1);
       return getMonthKeyFromDate(d);
+    };
+
+    const getNextPeriodFromKey = (key) => {
+      const [year, month] = String(key).split('-').map(Number);
+      if (!year || !month) return null;
+      if (month === 12) return { year: year + 1, month: 1 };
+      return { year, month: month + 1 };
+    };
+
+    const renderReportPeriods = () => {
+      if (!reportPeriodSelect) return;
+
+      if (!reportPeriodsData.length) {
+        reportPeriodSelect.innerHTML = '<option value="">No hay períodos disponibles</option>';
+        return;
+      }
+
+      reportPeriodSelect.innerHTML = reportPeriodsData.map((period) => `
+        <option value="${period.key}" ${period.is_current ? 'selected' : ''}>${period.label}</option>
+      `).join('');
     };
 
     const formatDateLong = (date) => date.toLocaleDateString('es-CL', {
@@ -2171,13 +2296,11 @@
 
         studentsLoaded = true;
         studentsLoadError = '';
-        renderSamples();
         return true;
       } catch (error) {
         students = [];
         studentsLoaded = false;
         studentsLoadError = error instanceof Error ? error.message : 'No se pudo cargar la nómina de estudiantes.';
-        renderSamples();
         console.error('Error cargando alumnos:', error);
         return false;
       }
@@ -2241,6 +2364,25 @@
     };
 
 
+    const loadReportPeriodsFromApi = async () => {
+      try {
+        const response = await fetch('/api/report-periods', { method: 'GET' });
+        const result = await response.json();
+
+        if (!response.ok || !result.ok) {
+          throw new Error(result.message || 'No se pudieron cargar los períodos disponibles.');
+        }
+
+        reportPeriodsData = Array.isArray(result.periods) ? result.periods : [];
+        return true;
+      } catch (error) {
+        reportPeriodsData = [];
+        console.error('Error cargando períodos:', error);
+        return false;
+      }
+    };
+
+
     const applyRoleUI = (role) => {
       document.body.classList.toggle('role-admin', role === 'admin');
       document.body.classList.toggle('role-user', role === 'user');
@@ -2263,7 +2405,7 @@
         studentCard.classList.remove('show');
       } else {
         heroTitle.textContent = 'Ingreso rápido por RUT o QR, con hora automática del sistema.';
-        heroParagraph.textContent = 'Esta versión de demostración simula el flujo de portería: lectura de RUT sin dígito verificador, cruce con la base de estudiantes, bloqueo de duplicados en el día, conteo mensual de atrasos y preparación del informe final con notificación al correo del alumno.';
+        heroParagraph.textContent = 'Esta versión de demostración simula el flujo de portería: lectura de RUT sin dígito verificador, cruce con la base de estudiantes, bloqueo de duplicados en el día, conteo mensual de atrasos y preparación del informe final con notificación simulada al correo del alumno.';
         if (heroTag) heroTag.textContent = 'Beta demo · Control de atrasos';
       }
     };
@@ -2668,7 +2810,7 @@
           <td><span class="pill alert">${item.current_month_count || 0}</span></td>
           <td>${item.total_historic_count || 0}</td>
           <td>Desde 3 atrasos vigentes corresponde notificar.</td>
-          <td>${sent ? 'Enviada ' + formatDateTimeShort(sent.sentAt) : 'Pendiente'}</td>
+          <td>${sent ? 'Simulada ' + formatDateTimeShort(sent.sentAt) : 'Pendiente'}</td>
         </tr>`;
       }).join('');
 
@@ -2727,14 +2869,77 @@
       automationStatusBox.innerHTML = `Se han generado <strong>${rows.length}</strong> despacho(s) mensual(es) simulados para inspectoría.`;
     };
 
+    const downloadSelectedPeriodReport = () => {
+      const selectedKey = reportPeriodSelect?.value || '';
+      const nextPeriod = getNextPeriodFromKey(selectedKey);
+
+      if (!nextPeriod) {
+        periodExportStatusBox.className = 'status show error';
+        periodExportStatusBox.innerHTML = 'Debes seleccionar un período válido para descargar el informe.';
+        return;
+      }
+
+      const url = `/api/export-monthly-full?year=${nextPeriod.year}&month=${nextPeriod.month}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
+      const selected = reportPeriodsData.find((period) => period.key === selectedKey);
+      periodExportStatusBox.className = 'status show success';
+      periodExportStatusBox.innerHTML = `Se inició la descarga del Excel correspondiente a <strong>${selected?.label || selectedKey}</strong>.`;
+    };
+
+    const sendSelectedPeriodReport = async () => {
+      const selectedKey = reportPeriodSelect?.value || '';
+      const nextPeriod = getNextPeriodFromKey(selectedKey);
+
+      if (!nextPeriod) {
+        periodExportStatusBox.className = 'status show error';
+        periodExportStatusBox.innerHTML = 'Debes seleccionar un período válido para enviar el informe.';
+        return;
+      }
+
+      sendPeriodButton.disabled = true;
+      const originalText = sendPeriodButton.textContent;
+      sendPeriodButton.textContent = 'Enviando...';
+
+      try {
+        const response = await fetch('/api/send-monthly-report', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            year: nextPeriod.year,
+            month: nextPeriod.month
+          })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.ok) {
+          throw new Error(result.message || 'No se pudo enviar el informe al correo.');
+        }
+
+        const selected = reportPeriodsData.find((period) => period.key === selectedKey);
+        periodExportStatusBox.className = 'status show success';
+        periodExportStatusBox.innerHTML = `Informe enviado correctamente a <strong>${INSPECTORIA_EMAIL}</strong> para el período <strong>${selected?.label || selectedKey}</strong>.`;
+        automationStatusBox.className = 'status show success';
+        automationStatusBox.innerHTML = `Se envió un informe real a <strong>${INSPECTORIA_EMAIL}</strong> para el período <strong>${selected?.label || selectedKey}</strong>.`;
+      } catch (error) {
+        periodExportStatusBox.className = 'status show error';
+        periodExportStatusBox.innerHTML = error instanceof Error ? error.message : 'No se pudo enviar el informe al correo.';
+      } finally {
+        sendPeriodButton.disabled = false;
+        sendPeriodButton.textContent = originalText;
+      }
+    };
+
     const refreshAll = async () => {
       const monthKey = getMonthKeyFromDate(new Date());
       await loadDashboardFromApi();
       await loadResetLogsFromApi();
       await loadAlertStudentsFromApi();
+      await loadReportPeriodsFromApi();
       renderStats();
       renderTodayTable();
       renderReport();
+      renderReportPeriods();
       renderResetLog();
       renderAutomationTable();
       monthBadge.textContent = `Periodo ${monthKey}`;
@@ -2925,7 +3130,29 @@
       }
     };
 
-    const stopScanner = () => {
+    const getScanCrop = () => {
+      const width = qrVideo.videoWidth || 0;
+      const height = qrVideo.videoHeight || 0;
+      if (!width || !height) return null;
+
+      const size = Math.floor(Math.min(width, height) * 0.58);
+      const sx = Math.floor((width - size) / 2);
+      const sy = Math.floor((height - size) / 2);
+
+      return { sx, sy, sw: size, sh: size };
+    };
+
+    const exitScannerFullscreen = async () => {
+      if (document.fullscreenElement === scanBox && document.exitFullscreen) {
+        try {
+          await document.exitFullscreen();
+        } catch {
+          // ignore fullscreen exit errors
+        }
+      }
+    };
+
+    const stopScanner = async () => {
       scanLoopActive = false;
       if (activeStream) {
         activeStream.getTracks().forEach((track) => track.stop());
@@ -2934,7 +3161,9 @@
       qrVideo.srcObject = null;
       scanBox.classList.remove('active');
       scanBox.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('scanner-open');
       scanButton.textContent = '📷 Escanear QR';
+      await exitScannerFullscreen();
     };
 
     const processScannedText = (value) => {
@@ -2952,7 +3181,7 @@
 
     const startScanner = async () => {
       if (scanLoopActive) {
-        stopScanner();
+        await stopScanner();
         return;
       }
 
@@ -2968,18 +3197,32 @@
 
       try {
         activeStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: 'environment' } },
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 }
+          },
           audio: false
         });
 
         qrVideo.srcObject = activeStream;
         await qrVideo.play();
+
         scanLoopActive = true;
         scanBox.classList.add('active');
         scanBox.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('scanner-open');
         scanButton.textContent = '✖ Cerrar cámara';
-        scanNote.textContent = 'Apunta al QR con el número de RUT. La lectura se completa automáticamente.';
+        scanNote.textContent = 'Apunta el QR al recuadro central. Solo se leerá la zona demarcada para evitar errores con otros códigos cercanos.';
         scanCloseButton.focus();
+
+        if (scanBox.requestFullscreen) {
+          try {
+            await scanBox.requestFullscreen();
+          } catch {
+            // algunos navegadores móviles no permiten fullscreen programático
+          }
+        }
 
         const hasNativeQr = 'BarcodeDetector' in window;
         let detector = null;
@@ -2991,30 +3234,46 @@
           }
         }
 
+        let lastScanAt = 0;
+
         const tick = async () => {
           if (!scanLoopActive) return;
 
           try {
             let rawValue = '';
+            const crop = getScanCrop();
 
-            if (detector) {
-              const barcodes = await detector.detect(qrVideo);
-              if (barcodes.length) rawValue = barcodes[0].rawValue || '';
-            } else if (window.jsQR && qrVideo.readyState >= 2) {
-              const width = qrVideo.videoWidth || 0;
-              const height = qrVideo.videoHeight || 0;
-              if (width && height) {
-                qrCanvas.width = width;
-                qrCanvas.height = height;
-                const ctx = qrCanvas.getContext('2d', { willReadFrequently: true });
-                ctx.drawImage(qrVideo, 0, 0, width, height);
-                const imageData = ctx.getImageData(0, 0, width, height);
-                const code = window.jsQR(imageData.data, width, height, { inversionAttempts: 'dontInvert' });
+            if (crop && qrVideo.readyState >= 2) {
+              qrCanvas.width = crop.sw;
+              qrCanvas.height = crop.sh;
+              const ctx = qrCanvas.getContext('2d', { willReadFrequently: true });
+              ctx.drawImage(
+                qrVideo,
+                crop.sx,
+                crop.sy,
+                crop.sw,
+                crop.sh,
+                0,
+                0,
+                crop.sw,
+                crop.sh
+              );
+
+              if (detector) {
+                const barcodes = await detector.detect(qrCanvas);
+                if (barcodes.length) rawValue = barcodes[0].rawValue || '';
+              } else if (window.jsQR) {
+                const imageData = ctx.getImageData(0, 0, crop.sw, crop.sh);
+                const code = window.jsQR(imageData.data, crop.sw, crop.sh, { inversionAttempts: 'dontInvert' });
                 if (code && code.data) rawValue = code.data;
               }
             }
 
-            if (rawValue && processScannedText(rawValue)) return;
+            const now = Date.now();
+            if (rawValue && now - lastScanAt > 1200) {
+              lastScanAt = now;
+              if (processScannedText(rawValue)) return;
+            }
           } catch {
             // keep scanning
           }
@@ -3025,7 +3284,31 @@
         requestAnimationFrame(tick);
       } catch {
         renderStatus('No se pudo abrir la cámara. Revisa los permisos del navegador o usa la digitación manual.', 'error');
-        stopScanner();
+        await stopScanner();
+      }
+    };
+
+    const pasteRutFromClipboard = async () => {
+      try {
+        let raw = '';
+
+        if (navigator.clipboard && navigator.clipboard.readText) {
+          raw = await navigator.clipboard.readText();
+        }
+
+        const digits = sanitizeRutNumber(raw);
+        if (!digits) {
+          renderStatus('No se detectó un RUT válido en el portapapeles.', 'error');
+          return;
+        }
+
+        rutInput.value = digits;
+        lastEntrySource = 'manual';
+        rutInput.focus();
+        renderStatus(`RUT pegado correctamente: <strong>${digits}</strong>.`, 'success');
+      } catch {
+        rutInput.focus();
+        renderStatus('No se pudo leer el portapapeles. Puedes pegar con Ctrl + V directamente sobre el campo.', 'error');
       }
     };
 
@@ -3052,28 +3335,6 @@
         rutInput.value += key;
       });
     };
-
-    const renderSamples = () => {
-      if (!sampleList) return;
-
-      if (!students.length) {
-        sampleList.innerHTML = `<div class="empty">${studentsLoadError ? 'No se pudo cargar la nómina real.' : 'No hay alumnos disponibles para mostrar.'}</div>`;
-        return;
-      }
-
-      sampleList.innerHTML = students.slice(0, 12).map((student) => `
-        <button class="chip" data-rut="${student.rutNumber}">${student.rutNumber} · ${student.nombres}</button>
-      `).join('');
-    };
-
-    if (sampleList) {
-      sampleList.addEventListener('click', (event) => {
-        const chip = event.target.closest('[data-rut]');
-        if (!chip) return;
-        lastEntrySource = 'manual';
-        rutInput.value = chip.dataset.rut;
-      });
-    }
 
     const registerCurrentRut = async () => {
       clearStatus();
@@ -3102,28 +3363,7 @@
         return;
       }
 
-      if (!studentsLoaded) {
-        closeResetStudentModal();
-        showModal({
-          title: 'NÓMINA NO DISPONIBLE',
-          message: studentsLoadError || 'La lista de estudiantes aún no está disponible para procesar reseteos.',
-          buttonText: 'OK',
-          type: 'error'
-        });
-        return;
-      }
-
-      const student = students.find((item) => item.rutNumber === value);
-      if (!student) {
-        showModal({
-          title: 'RUT NO ENCONTRADO',
-          message: '',
-          buttonText: 'INGRESAR NUEVAMENTE',
-          type: 'error',
-          onClose: resetEntryUI
-        });
-        return;
-      }
+      const student = students.find((item) => item.rutNumber === value) || null;
 
       try {
         const response = await fetch('/api/register-tardy', {
@@ -3165,7 +3405,7 @@
         const state = loadState();
 
         const record = {
-          studentId: student.id,
+          studentId: apiStudent.id || student?.id || value,
           nombre: `${apiStudent.nombres} ${apiStudent.apellidos}`,
           rutFull: apiStudent.rut_completo,
           rutNumber: apiStudent.rut_base,
@@ -3174,7 +3414,7 @@
           estado: 'atraso',
           categoria: apiTardy.categoria,
           label: `Atraso ${apiTardy.categoria}`,
-          pillClass: apiTardy.categoria === 'A' ? 'warn' : apiTardy.categoria === 'B' ? 'orange' : 'danger',
+          pillClass: apiTardy.categoria === 'A' ? 'a' : apiTardy.categoria === 'B' ? 'b' : 'c',
           dateKey: apiTardy.fecha,
           monthKey,
           dateLabel: formatDateLong(new Date(`${apiTardy.fecha}T${apiTardy.hora}`)),
@@ -3502,9 +3742,12 @@
 
     exportEmailsButton.addEventListener('click', exportEmails);
     simulateSendButton.addEventListener('click', simulateSend);
+    if (downloadPeriodButton) downloadPeriodButton.addEventListener('click', downloadSelectedPeriodReport);
+    if (sendPeriodButton) sendPeriodButton.addEventListener('click', sendSelectedPeriodReport);
     resetStudentButton.addEventListener('click', openResetStudentModal);
     registerButton.addEventListener('click', registerCurrentRut);
     clearButton.addEventListener('click', resetEntryUI);
+    if (pasteRutButton) pasteRutButton.addEventListener('click', pasteRutFromClipboard);
     scanButton.addEventListener('click', startScanner);
     scanCloseButton.addEventListener('click', stopScanner);
 
@@ -3524,11 +3767,11 @@
       lastEntrySource = 'manual';
     });
 
-    rutInput.addEventListener('paste', async (event) => {
-      event.preventDefault();
+    rutInput.addEventListener('paste', (event) => {
       const pasted = event.clipboardData ? event.clipboardData.getData('text') : '';
       const digits = sanitizeRutNumber(pasted);
       if (!digits) return;
+      event.preventDefault();
       rutInput.value = digits;
       lastEntrySource = 'manual';
       renderStatus(`RUT pegado correctamente: <strong>${digits}</strong>.`, 'success');
@@ -3579,10 +3822,6 @@
       if (event.key === 'Escape' && feedbackModal.classList.contains('show')) hideModal();
       if (event.key === 'Escape' && scanLoopActive) stopScanner();
       if (event.key === 'Escape' && resetStudentModal.classList.contains('show')) closeResetStudentModal();
-    });
-
-    rutInput.addEventListener('input', () => {
-      rutInput.value = sanitizeRutNumber(rutInput.value);
     });
 
     resetStudentRutInput.addEventListener('input', () => {
