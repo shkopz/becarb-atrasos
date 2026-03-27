@@ -35,10 +35,6 @@
     }
 
     body { min-height: 100vh; }
-    body.scanner-open {
-      overflow: hidden;
-      touch-action: none;
-    }
 
     .shell {
       width: min(1180px, calc(100vw - 24px));
@@ -364,12 +360,17 @@
     }
 
     
+    .helper-paste {
+      min-width: 160px;
+      white-space: nowrap;
+    }
+
     .scan-box {
       display: none;
       position: fixed;
       inset: 0;
       z-index: 1100;
-      background: rgba(8, 17, 30, 0.96);
+      background: rgba(8, 17, 30, 0.98);
       align-items: stretch;
       justify-content: stretch;
       padding: 0;
@@ -399,6 +400,8 @@
       background: rgba(8, 17, 30, 0.92);
       border-bottom: 1px solid rgba(255,255,255,0.08);
       color: white;
+      position: relative;
+      z-index: 3;
     }
 
     .scan-title {
@@ -433,6 +436,7 @@
       min-height: 0;
       background: #000;
       overflow: hidden;
+      isolation: isolate;
     }
 
     #qrVideo {
@@ -443,6 +447,7 @@
       min-height: 0;
       max-height: none;
       object-fit: cover;
+      filter: saturate(1.04) contrast(1.02);
     }
 
     .scan-overlay {
@@ -451,75 +456,172 @@
       pointer-events: none;
       display: grid;
       place-items: center;
+      z-index: 2;
+    }
+
+    .scan-mask {
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(rgba(0,0,0,0.54), rgba(0,0,0,0.54)),
+        linear-gradient(rgba(0,0,0,0.54), rgba(0,0,0,0.54)),
+        linear-gradient(rgba(0,0,0,0.54), rgba(0,0,0,0.54)),
+        linear-gradient(rgba(0,0,0,0.54), rgba(0,0,0,0.54));
+      background-repeat: no-repeat;
+      background-size:
+        100% calc(50% - min(37vw, 180px)),
+        100% calc(50% - min(37vw, 180px)),
+        calc(50% - min(37vw, 180px)) min(74vw, 360px),
+        calc(50% - min(37vw, 180px)) min(74vw, 360px);
+      background-position:
+        top left,
+        bottom left,
+        center left,
+        center right;
     }
 
     .scan-frame {
+      position: relative;
       width: min(74vw, 360px);
       height: min(74vw, 360px);
-      border: 2px solid rgba(255,255,255,0.86);
+      border: 2px solid rgba(255,255,255,0.9);
       border-radius: 28px;
-      box-shadow: 0 0 0 999px rgba(0,0,0,0.42);
-      position: relative;
-      overflow: visible;
+      box-shadow:
+        0 0 0 999px rgba(0,0,0,0.16),
+        0 0 0 1px rgba(255,255,255,0.16) inset,
+        0 18px 30px rgba(0,0,0,0.24);
+      overflow: hidden;
+      background: transparent;
+      transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
     }
 
-    .scan-frame-corners span {
+    .scan-frame.is-detected {
+      transform: scale(1.015);
+      border-color: rgba(255,255,255,1);
+    }
+
+    .scan-corners .corner {
       position: absolute;
       width: 34px;
       height: 34px;
-      border-color: #ffffff;
+      border-color: rgba(255,255,255,0.96);
       border-style: solid;
       border-width: 0;
+      filter: drop-shadow(0 4px 10px rgba(0,0,0,0.28));
     }
 
-    .scan-frame-corners span:nth-child(1) {
-      top: -2px;
-      left: -2px;
-      border-top-width: 5px;
-      border-left-width: 5px;
-      border-top-left-radius: 16px;
+    .scan-corners .tl { top: 12px; left: 12px; border-top-width: 5px; border-left-width: 5px; border-top-left-radius: 14px; }
+    .scan-corners .tr { top: 12px; right: 12px; border-top-width: 5px; border-right-width: 5px; border-top-right-radius: 14px; }
+    .scan-corners .bl { bottom: 12px; left: 12px; border-bottom-width: 5px; border-left-width: 5px; border-bottom-left-radius: 14px; }
+    .scan-corners .br { bottom: 12px; right: 12px; border-bottom-width: 5px; border-right-width: 5px; border-bottom-right-radius: 14px; }
+
+    .scan-laser {
+      position: absolute;
+      left: 8%;
+      right: 8%;
+      top: 14%;
+      height: 3px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, transparent, rgba(255,36,36,0.95), transparent);
+      box-shadow: 0 0 0 1px rgba(255,40,40,0.12), 0 0 18px rgba(255,54,54,0.72);
+      animation: scanLaserMove 2.1s ease-in-out infinite;
+      opacity: 0.96;
     }
 
-    .scan-frame-corners span:nth-child(2) {
-      top: -2px;
-      right: -2px;
-      border-top-width: 5px;
-      border-right-width: 5px;
-      border-top-right-radius: 16px;
+    @keyframes scanLaserMove {
+      0% { transform: translateY(0); opacity: 0.4; }
+      12% { opacity: 1; }
+      50% { transform: translateY(calc(min(74vw, 360px) - 54px)); opacity: 0.95; }
+      100% { transform: translateY(0); opacity: 0.4; }
     }
 
-    .scan-frame-corners span:nth-child(3) {
-      bottom: -2px;
-      left: -2px;
-      border-bottom-width: 5px;
-      border-left-width: 5px;
-      border-bottom-left-radius: 16px;
-    }
-
-    .scan-frame-corners span:nth-child(4) {
-      bottom: -2px;
-      right: -2px;
-      border-bottom-width: 5px;
-      border-right-width: 5px;
-      border-bottom-right-radius: 16px;
-    }
-
-    .scan-frame-label {
+    .scan-center-copy {
       position: absolute;
       left: 50%;
-      bottom: -54px;
+      bottom: max(30px, env(safe-area-inset-bottom) + 18px);
       transform: translateX(-50%);
-      min-width: max-content;
-      padding: 9px 14px;
+      padding: 10px 14px;
       border-radius: 999px;
-      background: rgba(8, 17, 30, 0.78);
-      color: rgba(255,255,255,0.96);
+      background: rgba(8,17,30,0.68);
+      border: 1px solid rgba(255,255,255,0.16);
+      color: rgba(255,255,255,0.92);
       font-size: 13px;
+      font-weight: 700;
+      line-height: 1.2;
+      backdrop-filter: blur(10px);
+      white-space: nowrap;
+      text-align: center;
+      max-width: calc(100vw - 36px);
+    }
+
+    .scan-processing {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      gap: 12px;
+      background: rgba(8,17,30,0.44);
+      backdrop-filter: blur(6px);
+      text-align: center;
+      padding: 24px;
+    }
+
+    .scan-processing[hidden] {
+      display: none !important;
+    }
+
+    .scan-spinner {
+      width: 62px;
+      height: 62px;
+      border-radius: 999px;
+      border: 4px solid rgba(255,255,255,0.18);
+      border-top-color: rgba(255,255,255,0.96);
+      animation: scanSpin 0.85s linear infinite;
+      box-shadow: 0 0 18px rgba(255,255,255,0.18);
+    }
+
+    @keyframes scanSpin {
+      to { transform: rotate(360deg); }
+    }
+
+    .scan-processing-text {
+      color: rgba(255,255,255,0.96);
+      font-size: 16px;
       font-weight: 800;
       letter-spacing: 0.01em;
-      box-shadow: 0 10px 20px rgba(0,0,0,0.18);
-      backdrop-filter: blur(8px);
-      text-align: center;
+      text-shadow: 0 4px 18px rgba(0,0,0,0.36);
+    }
+
+    .scan-flash {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 0.18s ease;
+      background: transparent;
+      mix-blend-mode: screen;
+    }
+
+    .scan-flash.show {
+      opacity: 1;
+      animation: scanFlashPulse 0.58s ease;
+    }
+
+    .scan-flash.category-a {
+      background: radial-gradient(circle at center, rgba(210,142,8,0.34), rgba(210,142,8,0.18), transparent 72%);
+    }
+
+    .scan-flash.category-b {
+      background: radial-gradient(circle at center, rgba(183,106,0,0.36), rgba(183,106,0,0.2), transparent 72%);
+    }
+
+    .scan-flash.category-c {
+      background: radial-gradient(circle at center, rgba(214,54,73,0.38), rgba(214,54,73,0.22), transparent 72%);
+    }
+
+    @keyframes scanFlashPulse {
+      0% { opacity: 0; }
+      20% { opacity: 1; }
+      100% { opacity: 0; }
     }
 
     .scan-note {
@@ -529,6 +631,8 @@
       font-size: 13px;
       line-height: 1.5;
       border-top: 1px solid rgba(255,255,255,0.08);
+      position: relative;
+      z-index: 3;
     }
 
     @media (max-width: 640px) {
@@ -539,13 +643,19 @@
         width: min(78vw, 320px);
         height: min(78vw, 320px);
       }
-      .scan-frame-label {
-        bottom: -48px;
+      .scan-mask {
+        background-size:
+          100% calc(50% - min(39vw, 160px)),
+          100% calc(50% - min(39vw, 160px)),
+          calc(50% - min(39vw, 160px)) min(78vw, 320px),
+          calc(50% - min(39vw, 160px)) min(78vw, 320px);
+      }
+      .scan-center-copy {
         font-size: 12px;
-        padding: 8px 12px;
+        white-space: normal;
+        width: min(90vw, 320px);
       }
     }
-
 
     .status {
       display: none;
@@ -1633,9 +1743,9 @@
           <span class="tag">Beta demo · Control de atrasos</span>
           <h1>Ingreso rápido por RUT o QR, con hora automática del sistema.</h1>
           <p>
-            Esta versión de demostración simula el flujo de portería: lectura de RUT sin dígito verificador,
+            Esta versión de demostración replica el flujo de portería: lectura de RUT base o completo,
             cruce con la base de estudiantes, bloqueo de duplicados en el día, conteo mensual de atrasos y
-            preparación del informe final con notificación simulada al correo del alumno.
+            preparación del informe final con notificación a estudiantes.
           </p>
         </div>
       </article>
@@ -1668,7 +1778,7 @@
         <div class="entry-wrap">
           <div class="entry-box">
             <h3>Ingreso manual</h3>
-            <p>Se digita solo la parte numérica del RUT. Sin puntos, sin guion, sin dígito verificador.</p>
+            <p>Puedes digitar o pegar el RUT base, o también el RUT completo con guión. El sistema lo normaliza automáticamente.</p>
 
             <div class="field">
               <label for="rutInput">RUT numérico</label>
@@ -1686,7 +1796,7 @@
 
             <div class="helper-row">
               <div class="helper">Ingresa o pega el RUT sin dígito verificador. Puedes ingresar el RUT base o el RUT completo con guión. El sistema normaliza ambos formatos.</div>
-              <button class="btn btn-secondary" id="pasteRutButton" type="button">📋 Pegar RUT</button>
+              <button class="btn btn-secondary helper-paste" id="pasteRutButton" type="button">📋 Pegar RUT</button>
             </div>
 
             <div class="keypad" id="keypad"></div>
@@ -1713,17 +1823,26 @@
                   <video id="qrVideo" playsinline muted></video>
                   <canvas id="qrCanvas" hidden></canvas>
                   <div class="scan-overlay">
-                    <div class="scan-frame">
-                      <div class="scan-frame-corners">
-                        <span></span><span></span><span></span><span></span>
+                    <div class="scan-mask"></div>
+                    <div class="scan-frame" id="scanFrame">
+                      <div class="scan-corners">
+                        <span class="corner tl"></span>
+                        <span class="corner tr"></span>
+                        <span class="corner bl"></span>
+                        <span class="corner br"></span>
                       </div>
-                      <div class="scan-frame-label">Ubica el QR dentro del recuadro</div>
+                      <div class="scan-laser"></div>
                     </div>
+                    <div class="scan-center-copy" id="scanCenterCopy">Ubica un solo QR dentro del recuadro</div>
+                    <div class="scan-processing" id="scanProcessing" hidden>
+                      <div class="scan-spinner"></div>
+                      <div class="scan-processing-text" id="scanProcessingText">QR detectado. Validando alumno…</div>
+                    </div>
+                    <div class="scan-flash" id="scanFlash"></div>
                   </div>
                 </div>
                 <div class="scan-note" id="scanNote">
-                  Apunta la cámara al QR que contiene solo el número de RUT. Si el navegador no soporta lectura QR,
-                  usa la digitación manual.
+                  Apunta la cámara al QR que contiene solo el número de RUT. Si hay más de un código cerca, centra solo uno dentro del recuadro.
                 </div>
               </div>
             </div>
@@ -2064,7 +2183,6 @@
     const studentStatusCard = document.getElementById('studentStatusCard');
     const registerButton = document.getElementById('registerButton');
     const clearButton = document.getElementById('clearButton');
-    const pasteRutButton = document.getElementById('pasteRutButton');
     const statsGrid = document.getElementById('statsGrid');
     const todayTableBody = document.getElementById('todayTableBody');
     const reportTableBody = document.getElementById('reportTableBody');
@@ -2084,6 +2202,12 @@
     const scanBox = document.getElementById('scanBox');
     const scanCloseButton = document.getElementById('scanCloseButton');
     const scanNote = document.getElementById('scanNote');
+    const scanFrame = document.getElementById('scanFrame');
+    const scanCenterCopy = document.getElementById('scanCenterCopy');
+    const scanProcessing = document.getElementById('scanProcessing');
+    const scanProcessingText = document.getElementById('scanProcessingText');
+    const scanFlash = document.getElementById('scanFlash');
+    const pasteRutButton = document.getElementById('pasteRutButton');
     const qrVideo = document.getElementById('qrVideo');
     const qrCanvas = document.getElementById('qrCanvas');
     const liveClock = document.getElementById('liveClock');
@@ -2103,6 +2227,9 @@
     let lastFocusedBeforeModal = null;
     let lastFocusedBeforeResetModal = null;
     let audioContext = null;
+    let scanDetectedCooldown = false;
+    let scanShouldReopenAfterModal = false;
+    let scanFlashTimer = null;
 
     const emptyState = () => ({
       records: [],
@@ -2412,9 +2539,9 @@
 
     const classifyEntry = (date) => {
       const total = date.getHours() * 60 + date.getMinutes();
-      if (total < 485) return { estado: 'normal', categoria: null, label: 'Ingreso normal', pillClass: 'normal' };
-      if (total >= 485 && total <= 495) return { estado: 'atraso', categoria: 'A', label: 'Atraso tipo A', pillClass: 'a' };
-      if (total >= 496 && total <= 510) return { estado: 'atraso', categoria: 'B', label: 'Atraso tipo B', pillClass: 'b' };
+      if (total < 490) return { estado: 'normal', categoria: null, label: 'Ingreso normal', pillClass: 'normal' };
+      if (total >= 490 && total <= 500) return { estado: 'atraso', categoria: 'A', label: 'Atraso tipo A', pillClass: 'a' };
+      if (total >= 501 && total <= 510) return { estado: 'atraso', categoria: 'B', label: 'Atraso tipo B', pillClass: 'b' };
       return { estado: 'atraso', categoria: 'C', label: 'Atraso tipo C', pillClass: 'c' };
     };
 
@@ -3130,58 +3257,109 @@
       }
     };
 
-    const getScanCrop = () => {
-      const width = qrVideo.videoWidth || 0;
-      const height = qrVideo.videoHeight || 0;
-      if (!width || !height) return null;
-
-      const size = Math.floor(Math.min(width, height) * 0.58);
-      const sx = Math.floor((width - size) / 2);
-      const sy = Math.floor((height - size) / 2);
-
-      return { sx, sy, sw: size, sh: size };
+    const setScanProcessingState = (active, message = 'QR detectado. Validando alumno…') => {
+      if (!scanProcessing) return;
+      scanProcessing.hidden = !active;
+      if (scanProcessingText) scanProcessingText.textContent = message;
+      if (scanFrame) scanFrame.classList.toggle('is-detected', !!active);
+      if (scanCenterCopy) scanCenterCopy.hidden = !!active;
     };
 
-    const exitScannerFullscreen = async () => {
-      if (document.fullscreenElement === scanBox && document.exitFullscreen) {
-        try {
-          await document.exitFullscreen();
-        } catch {
-          // ignore fullscreen exit errors
+    const triggerScanFlash = (categoria = 'A') => new Promise((resolve) => {
+      if (!scanFlash) {
+        resolve();
+        return;
+      }
+      if (scanFlashTimer) window.clearTimeout(scanFlashTimer);
+      const flashClass =
+        categoria === 'C' ? 'category-c' :
+        categoria === 'B' ? 'category-b' :
+        'category-a';
+
+      scanFlash.className = `scan-flash ${flashClass} show`;
+      scanFlashTimer = window.setTimeout(() => {
+        scanFlash.className = 'scan-flash';
+        resolve();
+      }, 620);
+    });
+
+    const tryOpenFullscreen = async () => {
+      const target = scanBox;
+      if (!target || !target.requestFullscreen) return;
+      try {
+        if (!document.fullscreenElement) {
+          await target.requestFullscreen({ navigationUI: 'hide' });
         }
+      } catch {
+        // ignore fullscreen errors
+      }
+    };
+
+    const exitFullscreenIfNeeded = async () => {
+      try {
+        if (document.fullscreenElement) {
+          await document.exitFullscreen();
+        }
+      } catch {
+        // ignore
       }
     };
 
     const stopScanner = async () => {
       scanLoopActive = false;
+      scanDetectedCooldown = false;
+      setScanProcessingState(false);
       if (activeStream) {
         activeStream.getTracks().forEach((track) => track.stop());
         activeStream = null;
       }
       qrVideo.srcObject = null;
+      document.body.style.overflow = '';
       scanBox.classList.remove('active');
       scanBox.setAttribute('aria-hidden', 'true');
-      document.body.classList.remove('scanner-open');
       scanButton.textContent = '📷 Escanear QR';
-      await exitScannerFullscreen();
+      await exitFullscreenIfNeeded();
+    };
+
+    const pasteRutFromClipboard = async () => {
+      try {
+        let text = '';
+        if (navigator.clipboard && navigator.clipboard.readText) {
+          text = await navigator.clipboard.readText();
+        }
+        const digits = sanitizeRutNumber(text);
+        if (!digits) {
+          renderStatus('No se encontró un RUT válido en el portapapeles.', 'error');
+          return;
+        }
+        rutInput.value = digits;
+        lastEntrySource = 'manual';
+        renderStatus(`RUT pegado correctamente: <strong>${digits}</strong>.`, 'success');
+      } catch {
+        renderStatus('No se pudo leer el portapapeles. Prueba con Ctrl + V dentro del campo.', 'error');
+      }
     };
 
     const processScannedText = (value) => {
       const digits = sanitizeRutNumber(String(value || ''));
       lastEntrySource = 'qr';
-      if (!digits) return false;
+      if (!digits || scanDetectedCooldown) return false;
+      scanDetectedCooldown = true;
       rutInput.value = digits;
+      setScanProcessingState(true, 'QR detectado. Validando alumno…');
+      vibrateFeedback('success');
       renderStatus(`QR leído correctamente. RUT numérico capturado: <strong>${digits}</strong>. Registrando ingreso automáticamente...`, 'success');
-      stopScanner();
       window.setTimeout(() => {
-        registerCurrentRut();
+        stopScanner().then(() => {
+          registerCurrentRut();
+        });
       }, 120);
       return true;
     };
 
     const startScanner = async () => {
       if (scanLoopActive) {
-        await stopScanner();
+        stopScanner();
         return;
       }
 
@@ -3196,6 +3374,7 @@
       }
 
       try {
+        document.body.style.overflow = 'hidden';
         activeStream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: { ideal: 'environment' },
@@ -3207,22 +3386,15 @@
 
         qrVideo.srcObject = activeStream;
         await qrVideo.play();
-
         scanLoopActive = true;
+        scanDetectedCooldown = false;
         scanBox.classList.add('active');
         scanBox.setAttribute('aria-hidden', 'false');
-        document.body.classList.add('scanner-open');
         scanButton.textContent = '✖ Cerrar cámara';
-        scanNote.textContent = 'Apunta el QR al recuadro central. Solo se leerá la zona demarcada para evitar errores con otros códigos cercanos.';
+        scanNote.textContent = 'Centra un solo QR dentro del recuadro. Si hay varios códigos cerca, acércate al que deseas leer.';
+        setScanProcessingState(false);
         scanCloseButton.focus();
-
-        if (scanBox.requestFullscreen) {
-          try {
-            await scanBox.requestFullscreen();
-          } catch {
-            // algunos navegadores móviles no permiten fullscreen programático
-          }
-        }
+        tryOpenFullscreen();
 
         const hasNativeQr = 'BarcodeDetector' in window;
         let detector = null;
@@ -3234,46 +3406,40 @@
           }
         }
 
-        let lastScanAt = 0;
-
         const tick = async () => {
-          if (!scanLoopActive) return;
+          if (!scanLoopActive || scanDetectedCooldown) return;
 
           try {
             let rawValue = '';
-            const crop = getScanCrop();
 
-            if (crop && qrVideo.readyState >= 2) {
-              qrCanvas.width = crop.sw;
-              qrCanvas.height = crop.sh;
-              const ctx = qrCanvas.getContext('2d', { willReadFrequently: true });
-              ctx.drawImage(
-                qrVideo,
-                crop.sx,
-                crop.sy,
-                crop.sw,
-                crop.sh,
-                0,
-                0,
-                crop.sw,
-                crop.sh
-              );
+            if (qrVideo.readyState >= 2) {
+              const width = qrVideo.videoWidth || 0;
+              const height = qrVideo.videoHeight || 0;
 
-              if (detector) {
-                const barcodes = await detector.detect(qrCanvas);
-                if (barcodes.length) rawValue = barcodes[0].rawValue || '';
-              } else if (window.jsQR) {
-                const imageData = ctx.getImageData(0, 0, crop.sw, crop.sh);
-                const code = window.jsQR(imageData.data, crop.sw, crop.sh, { inversionAttempts: 'dontInvert' });
-                if (code && code.data) rawValue = code.data;
+              if (width && height) {
+                const cropRatio = 0.58;
+                const cropWidth = Math.floor(width * cropRatio);
+                const cropHeight = Math.floor(height * cropRatio);
+                const sx = Math.floor((width - cropWidth) / 2);
+                const sy = Math.floor((height - cropHeight) / 2);
+
+                qrCanvas.width = cropWidth;
+                qrCanvas.height = cropHeight;
+                const ctx = qrCanvas.getContext('2d', { willReadFrequently: true });
+                ctx.drawImage(qrVideo, sx, sy, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+
+                if (detector) {
+                  const barcodes = await detector.detect(qrCanvas);
+                  if (barcodes.length) rawValue = barcodes[0].rawValue || '';
+                } else if (window.jsQR) {
+                  const imageData = ctx.getImageData(0, 0, cropWidth, cropHeight);
+                  const code = window.jsQR(imageData.data, cropWidth, cropHeight, { inversionAttempts: 'dontInvert' });
+                  if (code && code.data) rawValue = code.data;
+                }
               }
             }
 
-            const now = Date.now();
-            if (rawValue && now - lastScanAt > 1200) {
-              lastScanAt = now;
-              if (processScannedText(rawValue)) return;
-            }
+            if (rawValue && processScannedText(rawValue)) return;
           } catch {
             // keep scanning
           }
@@ -3283,32 +3449,9 @@
 
         requestAnimationFrame(tick);
       } catch {
+        document.body.style.overflow = '';
         renderStatus('No se pudo abrir la cámara. Revisa los permisos del navegador o usa la digitación manual.', 'error');
-        await stopScanner();
-      }
-    };
-
-    const pasteRutFromClipboard = async () => {
-      try {
-        let raw = '';
-
-        if (navigator.clipboard && navigator.clipboard.readText) {
-          raw = await navigator.clipboard.readText();
-        }
-
-        const digits = sanitizeRutNumber(raw);
-        if (!digits) {
-          renderStatus('No se detectó un RUT válido en el portapapeles.', 'error');
-          return;
-        }
-
-        rutInput.value = digits;
-        lastEntrySource = 'manual';
-        rutInput.focus();
-        renderStatus(`RUT pegado correctamente: <strong>${digits}</strong>.`, 'success');
-      } catch {
-        rutInput.focus();
-        renderStatus('No se pudo leer el portapapeles. Puedes pegar con Ctrl + V directamente sobre el campo.', 'error');
+        stopScanner();
       }
     };
 
@@ -3364,6 +3507,7 @@
       }
 
       const student = students.find((item) => item.rutNumber === value) || null;
+      const originatedFromQr = lastEntrySource === 'qr';
 
       try {
         const response = await fetch('/api/register-tardy', {
@@ -3392,9 +3536,17 @@
           showModal({
             title: errorTitle,
             message: errorMessage,
-            buttonText: 'INGRESAR NUEVAMENTE',
+            buttonText: originatedFromQr ? 'Aceptar y escanear otro' : 'INGRESAR NUEVAMENTE',
             type: 'error',
-            onClose: resetEntryUI
+            onClose: () => {
+              resetEntryUI();
+              if (originatedFromQr) startScanner();
+            },
+            cancelText: originatedFromQr ? 'Cancelar' : null,
+            onCancel: originatedFromQr ? (() => {
+              resetEntryUI();
+              startScanner();
+            }) : null
           });
           return;
         }
@@ -3442,27 +3594,45 @@
           message = `El ingreso quedó registrado como <strong>Atraso ${apiTardy.categoria}</strong>. Este es su <strong>${apiTardy.current_month_count}</strong> atraso vigente del mes. <br><br><strong>Histórico total:</strong> ${apiTardy.total_historic_count} atraso(s).`;
         }
 
+        if (originatedFromQr) {
+          await triggerScanFlash(apiTardy.categoria);
+        }
+
         showModal({
-          title: 'INGRESO REGISTRADO',
+          title: originatedFromQr ? 'ALUMNO IDENTIFICADO' : 'INGRESO REGISTRADO',
           message,
-          buttonText: 'OK',
+          buttonText: originatedFromQr ? 'Aceptar y escanear otro' : 'Aceptar',
           type: modalType,
           details: {
             student: record.nombre,
             course: record.curso,
             time: record.time
           },
-          onClose: resetEntryUI,
+          onClose: () => {
+            resetEntryUI();
+            if (originatedFromQr) startScanner();
+          },
           cancelText: 'Cancelar',
-          onCancel: () => undoLastAcceptedEntry(record.createdAt)
+          onCancel: () => {
+            undoLastAcceptedEntry(record.createdAt);
+            if (originatedFromQr) startScanner();
+          }
         });
       } catch {
         showModal({
           title: 'ERROR DE CONEXIÓN',
           message: 'No se pudo registrar el ingreso en el servidor. Intenta nuevamente.',
-          buttonText: 'INGRESAR NUEVAMENTE',
+          buttonText: originatedFromQr ? 'Aceptar y escanear otro' : 'INGRESAR NUEVAMENTE',
           type: 'error',
-          onClose: resetEntryUI
+          onClose: () => {
+            resetEntryUI();
+            if (originatedFromQr) startScanner();
+          },
+          cancelText: originatedFromQr ? 'Cancelar' : null,
+          onCancel: originatedFromQr ? (() => {
+            resetEntryUI();
+            startScanner();
+          }) : null
         });
       }
     };
@@ -3747,9 +3917,9 @@
     resetStudentButton.addEventListener('click', openResetStudentModal);
     registerButton.addEventListener('click', registerCurrentRut);
     clearButton.addEventListener('click', resetEntryUI);
-    if (pasteRutButton) pasteRutButton.addEventListener('click', pasteRutFromClipboard);
     scanButton.addEventListener('click', startScanner);
-    scanCloseButton.addEventListener('click', stopScanner);
+    scanCloseButton.addEventListener('click', () => { stopScanner(); });
+    if (pasteRutButton) pasteRutButton.addEventListener('click', pasteRutFromClipboard);
 
     resetStudentCancel.addEventListener('click', closeResetStudentModal);
     resetStudentConfirm.addEventListener('click', executeStudentReset);
@@ -3767,11 +3937,11 @@
       lastEntrySource = 'manual';
     });
 
-    rutInput.addEventListener('paste', (event) => {
+    rutInput.addEventListener('paste', async (event) => {
+      event.preventDefault();
       const pasted = event.clipboardData ? event.clipboardData.getData('text') : '';
       const digits = sanitizeRutNumber(pasted);
       if (!digits) return;
-      event.preventDefault();
       rutInput.value = digits;
       lastEntrySource = 'manual';
       renderStatus(`RUT pegado correctamente: <strong>${digits}</strong>.`, 'success');
