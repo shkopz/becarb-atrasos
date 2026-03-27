@@ -1580,7 +1580,7 @@
           <p>
             Esta versión de demostración simula el flujo de portería: lectura de RUT sin dígito verificador,
             cruce con la base de estudiantes, bloqueo de duplicados en el día, conteo mensual de atrasos y
-            preparación del informe final con notificación simulada al correo del alumno.
+            preparación del informe final con notificación al correo del alumno.
           </p>
         </div>
       </article>
@@ -1593,7 +1593,7 @@
         </div>
         <div class="mini-note">
           <strong>Reglas activas del beta:</strong><br>
-          Categoría A de 08:10 a 08:20 · Categoría B de 08:21 a 08:30 · Categoría C desde 08:31.<br>
+          Categoría A de 08:05 a 08:15 · Categoría B de 08:16 a 08:30 · Categoría C desde 08:31 en adelante.<br>
           El conteo se acumula por mes calendario.
         </div>
       </aside>
@@ -1607,14 +1607,6 @@
             <p class="panel-sub">Ingresa el RUT numérico o escanea el QR. La hora se toma automáticamente del equipo.</p>
           </div>
           <span class="badge-inline" id="monthBadge">Periodo actual</span>
-        </div>
-
-        <div class="flow">
-          <span>1. Leer RUT</span>
-          <span>2. Buscar alumno</span>
-          <span>3. Guardar ingreso</span>
-          <span>4. Contar atrasos</span>
-          <span>5. Alertar sobre 3</span>
         </div>
 
         <div class="entry-wrap">
@@ -1720,7 +1712,7 @@
             <li>El cruce se hace con la base demo de estudiantes.</li>
             <li>Si el alumno ya fue registrado hoy, se bloquea el duplicado.</li>
             <li>La alerta aparece cuando supera 3 atrasos en el mes.</li>
-            <li>El envío de correo está simulado en esta etapa.</li>
+            <li>El envío de correo se realiza desde el panel de notificación a estudiantes.</li>
             <li>Los reseteos individuales quedan registrados con fecha, hora y usuario.</li>
             <li>El cierre mensual automático a inspectoría se simula en esta demo.</li>
           </ul>
@@ -1771,13 +1763,13 @@
       <div class="panel-header">
         <div>
           <h2 class="panel-title">Informe mensual · alumnos con 3 o más atrasos vigentes</h2>
-          <p class="panel-sub">Exporta el informe en formato Excel y simula la notificación final del período activo. Haz click en un correo para copiarlo al portapapeles.</p>
+          <p class="panel-sub">Exporta el informe en formato Excel y gestiona la notificación final del período activo. Haz click en un correo para copiarlo al portapapeles.</p>
         </div>
       </div>
 
       <div class="report-actions">
         <button class="btn btn-secondary" id="exportEmailsButton">Exportar Excel</button>
-        <button class="btn btn-primary" id="simulateSendButton">Enviar notificación simulada</button>
+        <button class="btn btn-primary" id="simulateSendButton">Notificar estudiantes</button>
       </div>
 
       <div class="status info show" id="reportStatusBox">
@@ -1802,26 +1794,6 @@
             <tr><td colspan="8" class="empty">Aún no hay alumnos con 3 o más atrasos vigentes en este mes.</td></tr>
           </tbody>
         </table>
-      </div>
-    </section>
-    <section class="panel admin-only" id="periodExportPanel">
-      <div class="panel-header">
-        <div>
-          <h2 class="panel-title">Exportar meses anteriores</h2>
-          <p class="panel-sub">Selecciona un período, incluyendo el mes en curso, para descargar el Excel completo o enviarlo al correo <strong>inspectoria@becarb.cl</strong>.</p>
-        </div>
-      </div>
-
-      <div class="period-inline">
-        <select class="period-select" id="reportPeriodSelect" aria-label="Seleccionar período de informe">
-          <option value="">Cargando períodos...</option>
-        </select>
-        <button class="btn btn-secondary" id="downloadPeriodButton">Descargar Excel</button>
-        <button class="btn btn-primary" id="sendPeriodButton">Enviar al correo</button>
-      </div>
-
-      <div class="status info show" id="periodExportStatusBox">
-        El selector reúne meses con registros y siempre incluye el mes en curso.
       </div>
     </section>
 
@@ -1964,7 +1936,6 @@
     let dashboardRecentAccesses = [];
     let resetLogsData = [];
     let alertStudentsData = [];
-    let reportPeriodsData = [];
 
     const DEFAULT_USER = '';
     const LOGIN_STORAGE_KEY = 'becarb-atrasos-session:auth';
@@ -2015,10 +1986,6 @@
     const reportStatusBox = document.getElementById('reportStatusBox');
     const exportEmailsButton = document.getElementById('exportEmailsButton');
     const simulateSendButton = document.getElementById('simulateSendButton');
-    const reportPeriodSelect = document.getElementById('reportPeriodSelect');
-    const downloadPeriodButton = document.getElementById('downloadPeriodButton');
-    const sendPeriodButton = document.getElementById('sendPeriodButton');
-    const periodExportStatusBox = document.getElementById('periodExportStatusBox');
     const resetStudentButton = document.getElementById('resetStudentButton');
     const resetLogTableBody = document.getElementById('resetLogTableBody');
     const automationTableBody = document.getElementById('automationTableBody');
@@ -2073,26 +2040,6 @@
     const previousMonthKey = (date = new Date()) => {
       const d = new Date(date.getFullYear(), date.getMonth() - 1, 1);
       return getMonthKeyFromDate(d);
-    };
-
-    const getNextPeriodFromKey = (key) => {
-      const [year, month] = String(key).split('-').map(Number);
-      if (!year || !month) return null;
-      if (month === 12) return { year: year + 1, month: 1 };
-      return { year, month: month + 1 };
-    };
-
-    const renderReportPeriods = () => {
-      if (!reportPeriodSelect) return;
-
-      if (!reportPeriodsData.length) {
-        reportPeriodSelect.innerHTML = '<option value="">No hay períodos disponibles</option>';
-        return;
-      }
-
-      reportPeriodSelect.innerHTML = reportPeriodsData.map((period) => `
-        <option value="${period.key}" ${period.is_current ? 'selected' : ''}>${period.label}</option>
-      `).join('');
     };
 
     const formatDateLong = (date) => date.toLocaleDateString('es-CL', {
@@ -2294,25 +2241,6 @@
     };
 
 
-    const loadReportPeriodsFromApi = async () => {
-      try {
-        const response = await fetch('/api/report-periods', { method: 'GET' });
-        const result = await response.json();
-
-        if (!response.ok || !result.ok) {
-          throw new Error(result.message || 'No se pudieron cargar los períodos disponibles.');
-        }
-
-        reportPeriodsData = Array.isArray(result.periods) ? result.periods : [];
-        return true;
-      } catch (error) {
-        reportPeriodsData = [];
-        console.error('Error cargando períodos:', error);
-        return false;
-      }
-    };
-
-
     const applyRoleUI = (role) => {
       document.body.classList.toggle('role-admin', role === 'admin');
       document.body.classList.toggle('role-user', role === 'user');
@@ -2335,16 +2263,16 @@
         studentCard.classList.remove('show');
       } else {
         heroTitle.textContent = 'Ingreso rápido por RUT o QR, con hora automática del sistema.';
-        heroParagraph.textContent = 'Esta versión de demostración simula el flujo de portería: lectura de RUT sin dígito verificador, cruce con la base de estudiantes, bloqueo de duplicados en el día, conteo mensual de atrasos y preparación del informe final con notificación simulada al correo del alumno.';
+        heroParagraph.textContent = 'Esta versión de demostración simula el flujo de portería: lectura de RUT sin dígito verificador, cruce con la base de estudiantes, bloqueo de duplicados en el día, conteo mensual de atrasos y preparación del informe final con notificación al correo del alumno.';
         if (heroTag) heroTag.textContent = 'Beta demo · Control de atrasos';
       }
     };
 
     const classifyEntry = (date) => {
       const total = date.getHours() * 60 + date.getMinutes();
-      if (total < 490) return { estado: 'normal', categoria: null, label: 'Ingreso normal', pillClass: 'normal' };
-      if (total >= 490 && total <= 500) return { estado: 'atraso', categoria: 'A', label: 'Atraso tipo A', pillClass: 'a' };
-      if (total >= 501 && total <= 510) return { estado: 'atraso', categoria: 'B', label: 'Atraso tipo B', pillClass: 'b' };
+      if (total < 485) return { estado: 'normal', categoria: null, label: 'Ingreso normal', pillClass: 'normal' };
+      if (total >= 485 && total <= 495) return { estado: 'atraso', categoria: 'A', label: 'Atraso tipo A', pillClass: 'a' };
+      if (total >= 496 && total <= 510) return { estado: 'atraso', categoria: 'B', label: 'Atraso tipo B', pillClass: 'b' };
       return { estado: 'atraso', categoria: 'C', label: 'Atraso tipo C', pillClass: 'c' };
     };
 
@@ -2740,7 +2668,7 @@
           <td><span class="pill alert">${item.current_month_count || 0}</span></td>
           <td>${item.total_historic_count || 0}</td>
           <td>Desde 3 atrasos vigentes corresponde notificar.</td>
-          <td>${sent ? 'Simulada ' + formatDateTimeShort(sent.sentAt) : 'Pendiente'}</td>
+          <td>${sent ? 'Enviada ' + formatDateTimeShort(sent.sentAt) : 'Pendiente'}</td>
         </tr>`;
       }).join('');
 
@@ -2799,77 +2727,14 @@
       automationStatusBox.innerHTML = `Se han generado <strong>${rows.length}</strong> despacho(s) mensual(es) simulados para inspectoría.`;
     };
 
-    const downloadSelectedPeriodReport = () => {
-      const selectedKey = reportPeriodSelect?.value || '';
-      const nextPeriod = getNextPeriodFromKey(selectedKey);
-
-      if (!nextPeriod) {
-        periodExportStatusBox.className = 'status show error';
-        periodExportStatusBox.innerHTML = 'Debes seleccionar un período válido para descargar el informe.';
-        return;
-      }
-
-      const url = `/api/export-monthly-full?year=${nextPeriod.year}&month=${nextPeriod.month}`;
-      window.open(url, '_blank', 'noopener,noreferrer');
-      const selected = reportPeriodsData.find((period) => period.key === selectedKey);
-      periodExportStatusBox.className = 'status show success';
-      periodExportStatusBox.innerHTML = `Se inició la descarga del Excel correspondiente a <strong>${selected?.label || selectedKey}</strong>.`;
-    };
-
-    const sendSelectedPeriodReport = async () => {
-      const selectedKey = reportPeriodSelect?.value || '';
-      const nextPeriod = getNextPeriodFromKey(selectedKey);
-
-      if (!nextPeriod) {
-        periodExportStatusBox.className = 'status show error';
-        periodExportStatusBox.innerHTML = 'Debes seleccionar un período válido para enviar el informe.';
-        return;
-      }
-
-      sendPeriodButton.disabled = true;
-      const originalText = sendPeriodButton.textContent;
-      sendPeriodButton.textContent = 'Enviando...';
-
-      try {
-        const response = await fetch('/api/send-monthly-report', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            year: nextPeriod.year,
-            month: nextPeriod.month
-          })
-        });
-
-        const result = await response.json();
-
-        if (!response.ok || !result.ok) {
-          throw new Error(result.message || 'No se pudo enviar el informe al correo.');
-        }
-
-        const selected = reportPeriodsData.find((period) => period.key === selectedKey);
-        periodExportStatusBox.className = 'status show success';
-        periodExportStatusBox.innerHTML = `Informe enviado correctamente a <strong>${INSPECTORIA_EMAIL}</strong> para el período <strong>${selected?.label || selectedKey}</strong>.`;
-        automationStatusBox.className = 'status show success';
-        automationStatusBox.innerHTML = `Se envió un informe real a <strong>${INSPECTORIA_EMAIL}</strong> para el período <strong>${selected?.label || selectedKey}</strong>.`;
-      } catch (error) {
-        periodExportStatusBox.className = 'status show error';
-        periodExportStatusBox.innerHTML = error instanceof Error ? error.message : 'No se pudo enviar el informe al correo.';
-      } finally {
-        sendPeriodButton.disabled = false;
-        sendPeriodButton.textContent = originalText;
-      }
-    };
-
     const refreshAll = async () => {
       const monthKey = getMonthKeyFromDate(new Date());
       await loadDashboardFromApi();
       await loadResetLogsFromApi();
       await loadAlertStudentsFromApi();
-      await loadReportPeriodsFromApi();
       renderStats();
       renderTodayTable();
       renderReport();
-      renderReportPeriods();
       renderResetLog();
       renderAutomationTable();
       monthBadge.textContent = `Periodo ${monthKey}`;
@@ -3637,8 +3502,6 @@
 
     exportEmailsButton.addEventListener('click', exportEmails);
     simulateSendButton.addEventListener('click', simulateSend);
-    if (downloadPeriodButton) downloadPeriodButton.addEventListener('click', downloadSelectedPeriodReport);
-    if (sendPeriodButton) sendPeriodButton.addEventListener('click', sendSelectedPeriodReport);
     resetStudentButton.addEventListener('click', openResetStudentModal);
     registerButton.addEventListener('click', registerCurrentRut);
     clearButton.addEventListener('click', resetEntryUI);
