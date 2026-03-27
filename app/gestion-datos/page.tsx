@@ -116,6 +116,14 @@ export default function GestionDatosPage() {
     return `/api/data-management?${params.toString()}`;
   }, [page, query, course, month]);
 
+  const exportUrl = useMemo(() => {
+    const params = new URLSearchParams();
+    if (query.trim()) params.set("q", query.trim());
+    if (course.trim()) params.set("course", course.trim());
+    if (month.trim()) params.set("month", month.trim());
+    return `/api/export-data-management-filtered?${params.toString()}`;
+  }, [query, course, month]);
+
   useEffect(() => {
     try {
       const savedValue = window.localStorage.getItem(AUTO_REFRESH_STORAGE_KEY);
@@ -691,37 +699,65 @@ export default function GestionDatosPage() {
               </p>
             </div>
 
-            <label style={toggleWrapperStyle}>
-              <span style={{ fontSize: "13px", color: "#5f6570", fontWeight: 700 }}>
-                Actualización automática
-              </span>
-
-              <button
-                type="button"
-                aria-pressed={autoRefreshEnabled}
-                onClick={() => setAutoRefreshEnabled((prev) => !prev)}
-                style={toggleButtonStyle(autoRefreshEnabled)}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                flexWrap: "wrap",
+                justifyContent: "flex-end",
+              }}
+            >
+              <a
+                href={exportUrl}
+                style={totalRecords > 0 ? exportButtonStyle : disabledExportButtonStyle}
+                aria-disabled={totalRecords === 0}
+                onClick={(event) => {
+                  if (totalRecords === 0) {
+                    event.preventDefault();
+                  }
+                }}
                 title={
-                  autoRefreshEnabled
-                    ? "Desactivar actualización automática"
-                    : "Activar actualización automática"
+                  totalRecords > 0
+                    ? "Exportar a Excel todos los registros que coincidan con los filtros actuales"
+                    : "No hay registros filtrados para exportar"
                 }
               >
-                <span style={toggleKnobStyle(autoRefreshEnabled)} />
-              </button>
+                ⬇ Exportar a Excel
+              </a>
 
-              <span
-                style={{
-                  fontSize: "13px",
-                  color: autoRefreshEnabled ? "#0b9f6b" : "#5f6570",
-                  fontWeight: 800,
-                  minWidth: "34px",
-                  textAlign: "right",
-                }}
-              >
-                {autoRefreshEnabled ? "ON" : "OFF"}
-              </span>
-            </label>
+              <label style={toggleWrapperStyle}>
+                <span style={{ fontSize: "13px", color: "#5f6570", fontWeight: 700 }}>
+                  Actualización automática
+                </span>
+
+                <button
+                  type="button"
+                  aria-pressed={autoRefreshEnabled}
+                  onClick={() => setAutoRefreshEnabled((prev) => !prev)}
+                  style={toggleButtonStyle(autoRefreshEnabled)}
+                  title={
+                    autoRefreshEnabled
+                      ? "Desactivar actualización automática"
+                      : "Activar actualización automática"
+                  }
+                >
+                  <span style={toggleKnobStyle(autoRefreshEnabled)} />
+                </button>
+
+                <span
+                  style={{
+                    fontSize: "13px",
+                    color: autoRefreshEnabled ? "#0b9f6b" : "#5f6570",
+                    fontWeight: 800,
+                    minWidth: "34px",
+                    textAlign: "right",
+                  }}
+                >
+                  {autoRefreshEnabled ? "ON" : "OFF"}
+                </span>
+              </label>
+            </div>
           </div>
 
           <div style={legendContainerStyle}>
@@ -1361,6 +1397,28 @@ const emailButtonStyle: React.CSSProperties = {
 
 const disabledEmailButtonStyle: React.CSSProperties = {
   ...emailButtonStyle,
+  opacity: 0.45,
+  cursor: "default",
+};
+
+const exportButtonStyle: React.CSSProperties = {
+  minHeight: "38px",
+  border: "1px solid rgba(11, 159, 107, 0.20)",
+  borderRadius: "12px",
+  padding: "0 14px",
+  background: "rgba(11, 159, 107, 0.10)",
+  color: "#0b9f6b",
+  fontWeight: 800,
+  fontSize: "13px",
+  textDecoration: "none",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  whiteSpace: "nowrap",
+};
+
+const disabledExportButtonStyle: React.CSSProperties = {
+  ...exportButtonStyle,
   opacity: 0.45,
   cursor: "default",
 };
