@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { google } from "googleapis";
 import nodemailer from "nodemailer";
 
 const supabase = createClient(
@@ -34,57 +33,6 @@ function buildTransporter() {
   });
 }
 
-function parseServiceAccount() {
-  const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-
-  if (!raw) {
-    throw new Error("Falta GOOGLE_SERVICE_ACCOUNT_JSON");
-  }
-
-  try {
-    return JSON.parse(raw);
-  } catch {
-    throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON no tiene un JSON válido");
-  }
-}
-
-async function getStudentsFromSheet() {
-  const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
-
-  if (!spreadsheetId) {
-    throw new Error("Falta GOOGLE_SHEETS_SPREADSHEET_ID");
-  }
-
-  const credentials = parseServiceAccount();
-
-  const auth = new google.auth.GoogleAuth({
-    credentials,
-    scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
-  });
-
-  const sheets = google.sheets({ version: "v4", auth });
-
-  const response = await sheets.spreadsheets.values.get({
-    spreadsheetId,
-    range: "alumnos!A:G",
-  });
-
-  const rows = response.data.values || [];
-  const [, ...dataRows] = rows;
-
-  return dataRows
-    .filter((row) => row.length > 0)
-    .map((row) => ({
-      rut_base: String(row[0] || "").replace(/\D/g, ""),
-      rut_completo: String(row[1] || ""),
-      nombres: String(row[2] || ""),
-      apellidos: String(row[3] || ""),
-      curso: String(row[4] || ""),
-      email: String(row[5] || "").trim().toLowerCase(),
-      activo: String(row[6] || "").trim().toLowerCase() === "si",
-    }));
-}
-
 function getChileNow() {
   const now = new Date();
 
@@ -109,8 +57,8 @@ function getChileNow() {
 }
 
 function classifyTardy(hhmm: string) {
-  if (hhmm >= "08:10" && hhmm <= "08:20") return "A";
-  if (hhmm >= "08:21" && hhmm <= "08:30") return "B";
+  if (hhmm >= "08:05" && hhmm <= "08:15") return "A";
+  if (hhmm >= "08:16" && hhmm <= "08:30") return "B";
   if (hhmm >= "08:31") return "C";
   return null;
 }
@@ -129,16 +77,30 @@ function buildNotificationContent(params: {
       notificationType: "meeting",
       subject: "Citación por atrasos registrados",
       text:
-        `Estimado/a ${nombres}:\n\n` +
-        `Se ha registrado un nuevo atraso en tu ingreso al establecimiento.\n` +
-        `Actualmente acumulas ${count} atraso(s) vigente(s) en el período actual.\n\n` +
-        `Informamos que se espera la presencia de tu apoderado en el establecimiento para entrevista y justificación de los atrasos registrados.\n\n` +
-        `Detalle del registro:\n` +
-        `Curso: ${curso}\n` +
-        `Fecha: ${fecha}\n` +
-        `Hora: ${hora}\n\n` +
-        `Saludos cordiales,\n` +
-        `Inspectoría\n` +
+        `Estimado/a ${nombres}:
+
+` +
+        `Se ha registrado un nuevo atraso en tu ingreso al establecimiento.
+` +
+        `Actualmente acumulas ${count} atraso(s) vigente(s) en el período actual.
+
+` +
+        `Informamos que se espera la presencia de tu apoderado en el establecimiento para entrevista y justificación de los atrasos registrados.
+
+` +
+        `Detalle del registro:
+` +
+        `Curso: ${curso}
+` +
+        `Fecha: ${fecha}
+` +
+        `Hora: ${hora}
+
+` +
+        `Saludos cordiales,
+` +
+        `Inspectoría
+` +
         `Colegio Becarb`,
       html: `
         <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1d2430;">
@@ -163,16 +125,30 @@ function buildNotificationContent(params: {
     notificationType: "warning",
     subject: "Aviso de atraso registrado",
     text:
-      `Estimado/a ${nombres}:\n\n` +
-      `Se ha registrado un atraso en tu ingreso al establecimiento.\n` +
-      `Actualmente acumulas ${count} atraso(s) vigente(s) en el período actual.\n\n` +
-      `Te recordamos que, al cumplir 3 atrasos, tu apoderado deberá presentarse en el colegio para justificar la situación.\n\n` +
-      `Detalle del registro:\n` +
-      `Curso: ${curso}\n` +
-      `Fecha: ${fecha}\n` +
-      `Hora: ${hora}\n\n` +
-      `Saludos cordiales,\n` +
-      `Inspectoría\n` +
+      `Estimado/a ${nombres}:
+
+` +
+      `Se ha registrado un atraso en tu ingreso al establecimiento.
+` +
+      `Actualmente acumulas ${count} atraso(s) vigente(s) en el período actual.
+
+` +
+      `Te recordamos que, al cumplir 3 atrasos, tu apoderado deberá presentarse en el colegio para justificar la situación.
+
+` +
+      `Detalle del registro:
+` +
+      `Curso: ${curso}
+` +
+      `Fecha: ${fecha}
+` +
+      `Hora: ${hora}
+
+` +
+      `Saludos cordiales,
+` +
+      `Inspectoría
+` +
       `Colegio Becarb`,
     html: `
       <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1d2430;">
@@ -215,6 +191,38 @@ async function logNotification(params: {
   });
 }
 
+async function ensureCounterForStudent(studentId: number) {
+  const { data: counterRow, error: counterError } = await supabase
+    .from("student_counters")
+    .select("id, current_month_count, total_historic_count")
+    .eq("student_id", studentId)
+    .maybeSingle();
+
+  if (counterError) {
+    throw new Error("No se pudo leer el contador del estudiante.");
+  }
+
+  if (counterRow) {
+    return counterRow;
+  }
+
+  const { data: insertedCounter, error: insertCounterError } = await supabase
+    .from("student_counters")
+    .insert({
+      student_id: studentId,
+      current_month_count: 0,
+      total_historic_count: 0,
+    })
+    .select("id, current_month_count, total_historic_count")
+    .single();
+
+  if (insertCounterError || !insertedCounter) {
+    throw new Error("No se pudo crear el contador del estudiante.");
+  }
+
+  return insertedCounter;
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -234,21 +242,18 @@ export async function POST(request: Request) {
       );
     }
 
-    const students = await getStudentsFromSheet();
-    const studentFromSheet = students.find(
-      (student) => student.rut_base === rutBase && student.activo
-    );
-
-    if (!studentFromSheet) {
-      return NextResponse.json(
-        { ok: false, message: "RUT NO ENCONTRADO" },
-        { status: 404 }
-      );
-    }
-
-    const { data: existingStudent, error: studentError } = await supabase
+    const { data: student, error: studentError } = await supabase
       .from("students")
-      .select("id, rut_base")
+      .select(`
+        id,
+        rut_base,
+        rut_completo,
+        nombres,
+        apellidos,
+        curso,
+        email,
+        activo
+      `)
       .eq("rut_base", rutBase)
       .maybeSingle();
 
@@ -259,50 +264,11 @@ export async function POST(request: Request) {
       );
     }
 
-    let studentId = existingStudent?.id;
-
-    if (!studentId) {
-      const { data: insertedStudent, error: insertStudentError } = await supabase
-        .from("students")
-        .insert({
-          rut_base: studentFromSheet.rut_base,
-          rut_completo: studentFromSheet.rut_completo,
-          nombres: studentFromSheet.nombres,
-          apellidos: studentFromSheet.apellidos,
-          curso: studentFromSheet.curso,
-          email: studentFromSheet.email,
-          activo: studentFromSheet.activo,
-        })
-        .select("id")
-        .single();
-
-      if (insertStudentError || !insertedStudent) {
-        return NextResponse.json(
-          { ok: false, message: "No se pudo crear el estudiante en Supabase." },
-          { status: 500 }
-        );
-      }
-
-      studentId = insertedStudent.id;
-
-      await supabase.from("student_counters").insert({
-        student_id: studentId,
-        current_month_count: 0,
-        total_historic_count: 0,
-      });
-    } else {
-      await supabase
-        .from("students")
-        .update({
-          rut_completo: studentFromSheet.rut_completo,
-          nombres: studentFromSheet.nombres,
-          apellidos: studentFromSheet.apellidos,
-          curso: studentFromSheet.curso,
-          email: studentFromSheet.email,
-          activo: studentFromSheet.activo,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", studentId);
+    if (!student || student.activo === false) {
+      return NextResponse.json(
+        { ok: false, message: "RUT NO ENCONTRADO" },
+        { status: 404 }
+      );
     }
 
     const chileNow = getChileNow();
@@ -317,13 +283,20 @@ export async function POST(request: Request) {
       );
     }
 
-    const { data: duplicate } = await supabase
+    const { data: duplicate, error: duplicateError } = await supabase
       .from("tardy_records")
       .select("id")
-      .eq("student_id", studentId)
+      .eq("student_id", student.id)
       .eq("fecha", chileNow.date)
       .eq("cancelled", false)
       .limit(1);
+
+    if (duplicateError) {
+      return NextResponse.json(
+        { ok: false, message: "No se pudo validar el duplicado del día." },
+        { status: 500 }
+      );
+    }
 
     if (duplicate && duplicate.length > 0) {
       return NextResponse.json(
@@ -335,8 +308,8 @@ export async function POST(request: Request) {
     const { data: insertedTardy, error: insertTardyError } = await supabase
       .from("tardy_records")
       .insert({
-        student_id: studentId,
-        rut_base: studentFromSheet.rut_base,
+        student_id: student.id,
+        rut_base: student.rut_base,
         fecha: chileNow.date,
         hora: timeToUse,
         categoria,
@@ -354,19 +327,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { data: counterRow, error: counterError } = await supabase
-      .from("student_counters")
-      .select("id, current_month_count, total_historic_count")
-      .eq("student_id", studentId)
-      .single();
-
-    if (counterError || !counterRow) {
-      return NextResponse.json(
-        { ok: false, message: "No se pudo leer el contador del estudiante." },
-        { status: 500 }
-      );
-    }
-
+    const counterRow = await ensureCounterForStudent(student.id);
     const nextCurrent = (counterRow.current_month_count || 0) + 1;
     const nextHistoric = (counterRow.total_historic_count || 0) + 1;
 
@@ -395,16 +356,16 @@ export async function POST(request: Request) {
     } = {
       attempted: false,
       sent: false,
-      email: studentFromSheet.email || "",
+      email: student.email || "",
       type: null,
       message: "Sin envío de correo.",
     };
 
-    if (studentFromSheet.email) {
+    if (student.email) {
       const mail = buildNotificationContent({
-        nombres: studentFromSheet.nombres,
+        nombres: student.nombres,
         count: nextCurrent,
-        curso: studentFromSheet.curso,
+        curso: student.curso,
         fecha: chileNow.date,
         hora: timeToUse,
       });
@@ -412,7 +373,7 @@ export async function POST(request: Request) {
       notification = {
         attempted: true,
         sent: false,
-        email: studentFromSheet.email,
+        email: student.email,
         type: mail.notificationType,
         message: "Intento de envío realizado.",
       };
@@ -422,7 +383,7 @@ export async function POST(request: Request) {
 
         await transporter.sendMail({
           from: process.env.SMTP_USER || "inspectoria@becarb.cl",
-          to: studentFromSheet.email,
+          to: student.email,
           subject: mail.subject,
           html: mail.html,
           text: mail.text,
@@ -430,9 +391,9 @@ export async function POST(request: Request) {
 
         await logNotification({
           tardyRecordId: insertedTardy.id,
-          studentId,
-          rutBase: studentFromSheet.rut_base,
-          email: studentFromSheet.email,
+          studentId: student.id,
+          rutBase: student.rut_base,
+          email: student.email,
           notificationType: mail.notificationType,
           subject: mail.subject,
           status: "sent",
@@ -446,9 +407,9 @@ export async function POST(request: Request) {
 
         await logNotification({
           tardyRecordId: insertedTardy.id,
-          studentId,
-          rutBase: studentFromSheet.rut_base,
-          email: studentFromSheet.email,
+          studentId: student.id,
+          rutBase: student.rut_base,
+          email: student.email,
           notificationType: mail.notificationType,
           subject: mail.subject,
           status: "error",
@@ -462,13 +423,14 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       ok: true,
+      source: "supabase",
       student: {
-        rut_base: studentFromSheet.rut_base,
-        rut_completo: studentFromSheet.rut_completo,
-        nombres: studentFromSheet.nombres,
-        apellidos: studentFromSheet.apellidos,
-        curso: studentFromSheet.curso,
-        email: studentFromSheet.email,
+        rut_base: student.rut_base,
+        rut_completo: student.rut_completo,
+        nombres: student.nombres,
+        apellidos: student.apellidos,
+        curso: student.curso,
+        email: student.email,
       },
       tardy: {
         fecha: chileNow.date,

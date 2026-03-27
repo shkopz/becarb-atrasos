@@ -1,71 +1,54 @@
 import { NextResponse } from "next/server";
-import { google } from "googleapis";
+import { createClient } from "@supabase/supabase-js";
 
-function parseServiceAccount() {
-  const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
-  if (!raw) {
-    throw new Error("Falta GOOGLE_SERVICE_ACCOUNT_JSON en .env.local");
-  }
-
-  try {
-    return JSON.parse(raw);
-  } catch {
-    throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON no tiene un JSON válido");
-  }
+function sortByName(a: any, b: any) {
+  const aName = `${a.nombres || ""} ${a.apellidos || ""}`.trim().toLowerCase();
+  const bName = `${b.nombres || ""} ${b.apellidos || ""}`.trim().toLowerCase();
+  return aName.localeCompare(bName, "es");
 }
 
 export async function GET() {
   try {
-    const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
+    const { data, error } = await supabase
+      .from("students")
+      .select(`
+        rut_base,
+        rut_completo,
+        nombres,
+        apellidos,
+        curso,
+        email,
+        activo
+      `)
+      .eq("activo", true);
 
-    if (!spreadsheetId) {
+    if (error) {
       return NextResponse.json(
-        { ok: false, message: "Falta GOOGLE_SHEETS_SPREADSHEET_ID" },
+        { ok: false, message: "No se pudo cargar la nómina desde Supabase." },
         { status: 500 }
       );
     }
 
-    const credentials = parseServiceAccount();
-
-    const auth = new google.auth.GoogleAuth({
-      credentials,
-      scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
-    });
-
-    const sheets = google.sheets({ version: "v4", auth });
-
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: "alumnos!A:G",
-    });
-
-    const rows = response.data.values || [];
-
-    if (rows.length === 0) {
-      return NextResponse.json({
-        ok: true,
-        students: [],
-      });
-    }
-
-    const [header, ...dataRows] = rows;
-
-    const students = dataRows
-      .filter((row) => row.length > 0)
+    const students = (data || [])
       .map((row) => ({
-        rut_base: row[0] || "",
-        rut_completo: row[1] || "",
-        nombres: row[2] || "",
-        apellidos: row[3] || "",
-        curso: row[4] || "",
-        email: row[5] || "",
-        activo: (row[6] || "").toString().trim().toLowerCase() === "si",
-      }));
+        rut_base: String(row.rut_base || "").replace(/\D/g, ""),
+        rut_completo: String(row.rut_completo || ""),
+        nombres: String(row.nombres || ""),
+        apellidos: String(row.apellidos || ""),
+        curso: String(row.curso || ""),
+        email: String(row.email || "").trim().toLowerCase(),
+        activo: Boolean(row.activo),
+      }))
+      .sort(sortByName);
 
     return NextResponse.json({
       ok: true,
-      header,
+      source: "supabase",
       students,
     });
   } catch (error) {
