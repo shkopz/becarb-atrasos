@@ -2,9 +2,10 @@
 
 import type { CSSProperties, FormEvent } from "react";
 import { useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function ResetPasswordClient() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token") || "";
 
@@ -90,9 +91,7 @@ export default function ResetPasswordClient() {
 
         <form onSubmit={handleSubmit} style={styles.form}>
           <div style={styles.fieldWrap}>
-            <label htmlFor="password" style={styles.label}>
-              Nueva contraseña
-            </label>
+            <label htmlFor="password" style={styles.label}>Nueva contraseña</label>
             <div style={styles.passwordWrap}>
               <input
                 id="password"
@@ -106,11 +105,7 @@ export default function ResetPasswordClient() {
               <button
                 type="button"
                 onClick={() => setShowPassword((prev) => !prev)}
-                style={
-                  showPassword
-                    ? { ...styles.toggleButton, ...styles.toggleButtonActive }
-                    : styles.toggleButton
-                }
+                style={showPassword ? { ...styles.toggleButton, ...styles.toggleButtonActive } : styles.toggleButton}
                 aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
               >
                 {showPassword ? "Ocultar" : "Ver"}
@@ -119,9 +114,7 @@ export default function ResetPasswordClient() {
           </div>
 
           <div style={styles.fieldWrap}>
-            <label htmlFor="confirmPassword" style={styles.label}>
-              Confirmar contraseña
-            </label>
+            <label htmlFor="confirmPassword" style={styles.label}>Confirmar contraseña</label>
             <div style={styles.passwordWrap}>
               <input
                 id="confirmPassword"
@@ -135,11 +128,7 @@ export default function ResetPasswordClient() {
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword((prev) => !prev)}
-                style={
-                  showConfirmPassword
-                    ? { ...styles.toggleButton, ...styles.toggleButtonActive }
-                    : styles.toggleButton
-                }
+                style={showConfirmPassword ? { ...styles.toggleButton, ...styles.toggleButtonActive } : styles.toggleButton}
                 aria-label={showConfirmPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
               >
                 {showConfirmPassword ? "Ocultar" : "Ver"}
@@ -148,34 +137,16 @@ export default function ResetPasswordClient() {
           </div>
 
           {message ? (
-            <div
-              style={
-                tone === "error"
-                  ? { ...styles.message, ...styles.errorMessage }
-                  : { ...styles.message, ...styles.successMessage }
-              }
-            >
+            <div style={tone === "error" ? { ...styles.message, ...styles.errorMessage } : { ...styles.message, ...styles.successMessage }}>
               {message}
             </div>
           ) : null}
 
           <div style={styles.actions}>
-            <button
-              type="submit"
-              disabled={!canSubmit}
-              style={
-                !canSubmit
-                  ? { ...styles.primaryButton, ...styles.disabledButton }
-                  : styles.primaryButton
-              }
-            >
+            <button type="submit" disabled={!canSubmit} style={!canSubmit ? { ...styles.primaryButton, ...styles.disabledButton } : styles.primaryButton}>
               {submitting ? "Guardando..." : "Guardar nueva contraseña"}
             </button>
-            <button
-              type="button"
-              onClick={() => (window.location.href = "/demo-ui/interface-base.html")}
-              style={styles.secondaryButton}
-            >
+            <button type="button" onClick={() => (window.location.href = "/demo-ui/interface-base.html")} style={styles.secondaryButton}>
               Volver al login
             </button>
           </div>
@@ -276,9 +247,7 @@ const styles: Record<string, CSSProperties> = {
     top: "50%",
     transform: "translateY(-50%)",
     minWidth: "74px",
-    borderWidth: "1px",
-    borderStyle: "solid",
-    borderColor: "rgba(29,116,183,0.14)",
+    border: "1px solid rgba(29,116,183,0.14)",
     borderRadius: "999px",
     padding: "8px 12px",
     background: "linear-gradient(180deg, #ffffff, #f1f7fc)",
@@ -289,8 +258,6 @@ const styles: Record<string, CSSProperties> = {
   },
   toggleButtonActive: {
     background: "linear-gradient(135deg, rgba(29,116,183,0.10), rgba(73,182,222,0.18))",
-    borderWidth: "1px",
-    borderStyle: "solid",
     borderColor: "rgba(29,116,183,0.20)",
   },
   message: {
