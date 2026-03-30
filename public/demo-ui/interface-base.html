@@ -327,12 +327,13 @@
 
 
     .btn-admin-spotlight {
-      background: linear-gradient(135deg, rgba(29,116,183,0.10), rgba(73,182,222,0.18));
+      background: linear-gradient(135deg, rgba(29,116,183,0.14), rgba(73,182,222,0.26));
       color: var(--becarb-deep);
-      border-color: rgba(29,116,183,0.22);
-      box-shadow: 0 12px 24px rgba(29,116,183,0.14);
+      border-color: rgba(29,116,183,0.26);
+      box-shadow: 0 14px 28px rgba(29,116,183,0.18);
       position: relative;
       overflow: hidden;
+      font-weight: 900;
     }
 
     .btn-admin-spotlight::after {
@@ -1746,9 +1747,9 @@
         <div class="login-brand">
           <img src="https://becarb.cl/wp-content/uploads/2019/10/logoweb_becarb_trans.png" alt="Logo Becarb" />
         </div>
-        <span class="tag">Acceso al sistema · Beta demo</span>
+        <span class="tag">Acceso al sistema</span>
         <h1>Control de atrasos</h1>
-        <p>Ingresa tus credenciales para acceder al módulo de portería y al informe mensual del beta.</p>
+        <p>Ingresa tus credenciales para acceder al módulo de portería y al panel administrativo según tu rol.</p>
 
         <form class="login-fields" id="loginForm" autocomplete="on">
           <div class="login-field">
@@ -1807,12 +1808,10 @@
           <div class="brand">
             <img src="https://becarb.cl/wp-content/uploads/2019/10/logoweb_becarb_trans.png" alt="Logo Becarb" />
           </div>
-          <span class="tag">Beta demo · Control de atrasos</span>
+          <span class="tag">Sistema operativo · Control de atrasos</span>
           <h1>Ingreso rápido por RUT o QR, con hora automática del sistema.</h1>
           <p>
-            Esta versión de demostración simula el flujo de portería: lectura de RUT sin dígito verificador,
-            cruce con la base de estudiantes, bloqueo de duplicados en el día, conteo mensual de atrasos y
-            preparación del informe final con notificación simulada al correo del alumno.
+            Registro ágil por RUT o QR, con validación de alumno, bloqueo de duplicados diarios, conteo mensual de atrasos y notificación según la configuración vigente del sistema.
           </p>
         </div>
       </article>
@@ -1825,7 +1824,7 @@
         </div>
         <div class="mini-note">
           <strong>Reglas activas del beta:</strong><br>
-          Categoría A de 08:10 a 08:20 · Categoría B de 08:21 a 08:30 · Categoría C desde 08:31.<br>
+          Categoría A de 08:05 a 08:15 · Categoría B de 08:16 a 08:30 · Categoría C desde 08:31 en adelante.<br>
           El conteo se acumula por mes calendario.
         </div>
       </aside>
@@ -1941,18 +1940,18 @@
         <div class="panel-header">
           <div>
             <h2 class="panel-title">Resumen operativo</h2>
-            <p class="panel-sub">Lo que vería inspectoría en un cierre rápido de jornada.</p>
+            <p class="panel-sub">Resumen rápido del funcionamiento operativo del día.</p>
           </div>
         </div>
 
         <div class="rule-box">
-          <strong>Lógica del beta</strong>
+          <strong>Lógica operativa actual</strong>
           <ul>
-            <li>La hora se obtiene automáticamente del sistema.</li>
-            <li>El cruce se hace con la base demo de estudiantes.</li>
+            <li>La hora se toma automáticamente desde el sistema, salvo en ingresos manuales autorizados.</li>
+            <li>La validación del alumno se realiza contra la tabla oficial de estudiantes.</li>
             <li>Si el alumno ya fue registrado hoy, se bloquea el duplicado.</li>
-            <li>La alerta aparece cuando supera 3 atrasos en el mes.</li>
-            <li>El envío de correo está simulado en esta etapa.</li>
+            <li>La alerta aparece cuando el alumno alcanza 3 o más atrasos vigentes en el mes.</li>
+            <li>Los correos y respaldos se gestionan según la configuración vigente del sistema.</li>
             <li>Los reseteos individuales quedan registrados con fecha, hora y usuario.</li>
             <li>El cierre mensual automático a inspectoría se simula en esta demo.</li>
           </ul>
@@ -1961,7 +1960,7 @@
         <div class="stats-grid" id="statsGrid"></div>
 
         <div class="footer-note">
-          Los movimientos del mes siguen guardándose localmente en esta etapa, pero la nómina de alumnos ya se carga desde Google Sheets.
+          La nómina oficial de alumnos se carga desde la base de datos y los marcajes operan sobre el flujo vigente del sistema.
         </div>
       </aside>
     </section>
@@ -2009,7 +2008,7 @@
 
       <div class="report-actions">
         <button class="btn btn-secondary" id="exportEmailsButton">Exportar Excel</button>
-        <button class="btn btn-primary" id="simulateSendButton">Enviar notificación simulada</button>
+        <button class="btn btn-primary" id="simulateSendButton">Notificar estudiantes</button>
       </div>
 
       <div class="status info show" id="reportStatusBox">
@@ -2664,8 +2663,8 @@
         studentCard.classList.remove('show');
       } else {
         heroTitle.textContent = 'Ingreso rápido por RUT o QR, con hora automática del sistema.';
-        heroParagraph.textContent = 'Esta versión de demostración simula el flujo de portería: lectura de RUT sin dígito verificador, cruce con la base de estudiantes, bloqueo de duplicados en el día, conteo mensual de atrasos y preparación del informe final con notificación simulada al correo del alumno.';
-        if (heroTag) heroTag.textContent = 'Beta demo · Control de atrasos';
+        heroParagraph.textContent = 'Registro ágil por RUT o QR, con validación de alumno, bloqueo de duplicados diarios, conteo mensual de atrasos y notificación según la configuración vigente del sistema.';
+        if (heroTag) heroTag.textContent = 'Sistema operativo · Control de atrasos';
       }
     };
 

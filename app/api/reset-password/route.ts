@@ -27,9 +27,9 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!password || password.length < 4) {
+    if (!password || password.length < 6) {
       return NextResponse.json(
-        { ok: false, message: "La nueva contraseña debe tener al menos 4 caracteres." },
+        { ok: false, message: "La nueva contraseña debe tener al menos 6 caracteres." },
         { status: 400 }
       );
     }
