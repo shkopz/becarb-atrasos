@@ -47,6 +47,7 @@ function getChileNow() {
   return {
     date: `${map.year}-${map.month}-${map.day}`,
     time: `${map.hour}:${map.minute}:${map.second}`,
+    hhmm: `${map.hour}:${map.minute}`,
   };
 }
 
@@ -91,7 +92,9 @@ export async function POST(request: Request) {
   try {
     const formData = await request.formData();
     const rutBase = String(formData.get("rut_base") || "").replace(/\D/g, "");
-    const horaIngreso = String(formData.get("hora_ingreso") || "").slice(0, 5);
+    const chileNow = getChileNow();
+    const requestedHour = String(formData.get("hora_ingreso") || "").slice(0, 5);
+    const horaIngreso = /^\d{2}:\d{2}$/.test(requestedHour) ? requestedHour : chileNow.hhmm;
     const observacion = String(formData.get("observacion") || "").trim();
     const createdBy = String(formData.get("created_by") || "desconocido").trim().toLowerCase();
     const evidencia = formData.get("evidencia");
@@ -99,13 +102,6 @@ export async function POST(request: Request) {
     if (!/^\d{8,9}$/.test(rutBase)) {
       return NextResponse.json(
         { ok: false, message: "RUT inválido. Debe tener 8 o 9 dígitos." },
-        { status: 400 }
-      );
-    }
-
-    if (!/^\d{2}:\d{2}$/.test(horaIngreso)) {
-      return NextResponse.json(
-        { ok: false, message: "Debes indicar una hora de ingreso válida." },
         { status: 400 }
       );
     }
@@ -143,7 +139,7 @@ export async function POST(request: Request) {
     const { data: duplicateRecord, error: duplicateError } = await supabase
       .from("tardy_records")
       .select("id")
-      .eq("rut_base", rutBase)
+      .eq("student_id", student.id)
       .eq("fecha", date)
       .eq("cancelled", false)
       .maybeSingle();
@@ -169,6 +165,7 @@ export async function POST(request: Request) {
     const { data: insertedTardy, error: insertTardyError } = await supabase
       .from("tardy_records")
       .insert({
+        student_id: student.id,
         rut_base: rutBase,
         fecha: date,
         hora: `${horaIngreso}:00`,
@@ -182,7 +179,7 @@ export async function POST(request: Request) {
 
     if (insertTardyError || !insertedTardy) {
       return NextResponse.json(
-        { ok: false, message: "No se pudo guardar el ingreso manual." },
+        { ok: false, message: insertTardyError?.message || "No se pudo guardar el ingreso manual." },
         { status: 500 }
       );
     }
@@ -260,6 +257,11 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       ok: true,
+      manual_entry: {
+        observacion: prettyObservation,
+        has_attachment: attachments.length > 0,
+        source: "manual",
+      },
       student: {
         id: student.id,
         rut_base: student.rut_base,

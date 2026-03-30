@@ -327,13 +327,12 @@
 
 
     .btn-admin-spotlight {
-      background: linear-gradient(135deg, rgba(29,116,183,0.14), rgba(73,182,222,0.26));
+      background: linear-gradient(135deg, rgba(29,116,183,0.10), rgba(73,182,222,0.18));
       color: var(--becarb-deep);
-      border-color: rgba(29,116,183,0.26);
-      box-shadow: 0 14px 28px rgba(29,116,183,0.18);
+      border-color: rgba(29,116,183,0.22);
+      box-shadow: 0 12px 24px rgba(29,116,183,0.14);
       position: relative;
       overflow: hidden;
-      font-weight: 900;
     }
 
     .btn-admin-spotlight::after {
@@ -1747,9 +1746,9 @@
         <div class="login-brand">
           <img src="https://becarb.cl/wp-content/uploads/2019/10/logoweb_becarb_trans.png" alt="Logo Becarb" />
         </div>
-        <span class="tag">Acceso al sistema</span>
+        <span class="tag">Acceso al sistema · Beta demo</span>
         <h1>Control de atrasos</h1>
-        <p>Ingresa tus credenciales para acceder al módulo de portería y al panel administrativo según tu rol.</p>
+        <p>Ingresa tus credenciales para acceder al módulo de portería y al informe mensual del beta.</p>
 
         <form class="login-fields" id="loginForm" autocomplete="on">
           <div class="login-field">
@@ -1808,10 +1807,12 @@
           <div class="brand">
             <img src="https://becarb.cl/wp-content/uploads/2019/10/logoweb_becarb_trans.png" alt="Logo Becarb" />
           </div>
-          <span class="tag">Sistema operativo · Control de atrasos</span>
+          <span class="tag">Beta demo · Control de atrasos</span>
           <h1>Ingreso rápido por RUT o QR, con hora automática del sistema.</h1>
           <p>
-            Registro ágil por RUT o QR, con validación de alumno, bloqueo de duplicados diarios, conteo mensual de atrasos y notificación según la configuración vigente del sistema.
+            Esta versión de demostración simula el flujo de portería: lectura de RUT sin dígito verificador,
+            cruce con la base de estudiantes, bloqueo de duplicados en el día, conteo mensual de atrasos y
+            preparación del informe final con notificación simulada al correo del alumno.
           </p>
         </div>
       </article>
@@ -1824,7 +1825,7 @@
         </div>
         <div class="mini-note">
           <strong>Reglas activas del beta:</strong><br>
-          Categoría A de 08:05 a 08:15 · Categoría B de 08:16 a 08:30 · Categoría C desde 08:31 en adelante.<br>
+          Categoría A de 08:10 a 08:20 · Categoría B de 08:21 a 08:30 · Categoría C desde 08:31.<br>
           El conteo se acumula por mes calendario.
         </div>
       </aside>
@@ -1838,14 +1839,6 @@
             <p class="panel-sub">Ingresa el RUT numérico o escanea el QR. La hora se toma automáticamente del equipo.</p>
           </div>
           <span class="badge-inline" id="monthBadge">Periodo actual</span>
-        </div>
-
-        <div class="flow">
-          <span>1. Leer RUT</span>
-          <span>2. Buscar alumno</span>
-          <span>3. Guardar ingreso</span>
-          <span>4. Contar atrasos</span>
-          <span>5. Alertar sobre 3</span>
         </div>
 
         <div class="entry-wrap">
@@ -1940,18 +1933,18 @@
         <div class="panel-header">
           <div>
             <h2 class="panel-title">Resumen operativo</h2>
-            <p class="panel-sub">Resumen rápido del funcionamiento operativo del día.</p>
+            <p class="panel-sub">Lo que vería inspectoría en un cierre rápido de jornada.</p>
           </div>
         </div>
 
         <div class="rule-box">
-          <strong>Lógica operativa actual</strong>
+          <strong>Lógica del beta</strong>
           <ul>
-            <li>La hora se toma automáticamente desde el sistema, salvo en ingresos manuales autorizados.</li>
-            <li>La validación del alumno se realiza contra la tabla oficial de estudiantes.</li>
+            <li>La hora se obtiene automáticamente del sistema.</li>
+            <li>El cruce se hace con la base demo de estudiantes.</li>
             <li>Si el alumno ya fue registrado hoy, se bloquea el duplicado.</li>
-            <li>La alerta aparece cuando el alumno alcanza 3 o más atrasos vigentes en el mes.</li>
-            <li>Los correos y respaldos se gestionan según la configuración vigente del sistema.</li>
+            <li>La alerta aparece cuando supera 3 atrasos en el mes.</li>
+            <li>El envío de correo está simulado en esta etapa.</li>
             <li>Los reseteos individuales quedan registrados con fecha, hora y usuario.</li>
             <li>El cierre mensual automático a inspectoría se simula en esta demo.</li>
           </ul>
@@ -1960,7 +1953,7 @@
         <div class="stats-grid" id="statsGrid"></div>
 
         <div class="footer-note">
-          La nómina oficial de alumnos se carga desde la base de datos y los marcajes operan sobre el flujo vigente del sistema.
+          Los movimientos del mes siguen guardándose localmente en esta etapa, pero la nómina de alumnos ya se carga desde Google Sheets.
         </div>
       </aside>
     </section>
@@ -2008,7 +2001,7 @@
 
       <div class="report-actions">
         <button class="btn btn-secondary" id="exportEmailsButton">Exportar Excel</button>
-        <button class="btn btn-primary" id="simulateSendButton">Notificar estudiantes</button>
+        <button class="btn btn-primary" id="simulateSendButton">Enviar notificación simulada</button>
       </div>
 
       <div class="status info show" id="reportStatusBox">
@@ -2663,8 +2656,8 @@
         studentCard.classList.remove('show');
       } else {
         heroTitle.textContent = 'Ingreso rápido por RUT o QR, con hora automática del sistema.';
-        heroParagraph.textContent = 'Registro ágil por RUT o QR, con validación de alumno, bloqueo de duplicados diarios, conteo mensual de atrasos y notificación según la configuración vigente del sistema.';
-        if (heroTag) heroTag.textContent = 'Sistema operativo · Control de atrasos';
+        heroParagraph.textContent = 'Esta versión de demostración simula el flujo de portería: lectura de RUT sin dígito verificador, cruce con la base de estudiantes, bloqueo de duplicados en el día, conteo mensual de atrasos y preparación del informe final con notificación simulada al correo del alumno.';
+        if (heroTag) heroTag.textContent = 'Beta demo · Control de atrasos';
       }
     };
 
@@ -2859,27 +2852,19 @@
       reader.readAsDataURL(file);
     };
 
-    const submitManualEntry = async () => {
+        const submitManualEntry = async () => {
       const rutValue = sanitizeRutNumber(manualRutInput.value);
-      const manualTime = String(manualTimeInput.value || '').slice(0, 5);
+      const requestedTime = String(manualTimeInput.value || '').slice(0, 5);
+      const manualTime = /^\d{2}:\d{2}$/.test(requestedTime) ? requestedTime : getCurrentChileHhmm();
       const observation = (manualObservationInput.value || '').trim();
       manualRutInput.value = rutValue;
+      manualTimeInput.value = manualTime;
 
       if (!rutValue) {
         showModal({
           title: 'INGRESA UN RUT',
           message: 'Debes ingresar un RUT válido para registrar el ingreso manual.',
-          buttonText: 'VOLVER',
-          type: 'error'
-        });
-        return;
-      }
-
-      if (!/^\d{2}:\d{2}$/.test(manualTime)) {
-        showModal({
-          title: 'HORA INVÁLIDA',
-          message: 'Debes indicar una hora válida para el ingreso manual.',
-          buttonText: 'VOLVER',
+          buttonText: 'Cerrar',
           type: 'error'
         });
         return;
@@ -2894,6 +2879,7 @@
         formData.append('hora_ingreso', manualTime);
         formData.append('observacion', observation);
         formData.append('created_by', currentUser() || 'desconocido');
+
         const evidenceFile = manualPhotoInput.files && manualPhotoInput.files[0] ? manualPhotoInput.files[0] : null;
         if (evidenceFile) {
           formData.append('evidencia', evidenceFile);
@@ -2904,14 +2890,18 @@
           body: formData
         });
 
-        const result = await response.json();
+        const result = await response.json().catch(() => ({}));
 
         if (!response.ok || !result.ok) {
           throw new Error(result.message || 'No se pudo registrar el ingreso manual.');
         }
 
-        closeManualEntryModal();
         const studentName = `${result.student.nombres} ${result.student.apellidos}`.trim();
+        const recordTime = String(result.tardy.hora || `${manualTime}:00`).slice(0, 5);
+        const observationMessage = result.manual_entry?.observacion
+          ? result.manual_entry.observacion
+          : 'Sin observación adicional.';
+
         const record = {
           studentId: result.student.id,
           nombre: studentName,
@@ -2926,28 +2916,43 @@
           dateKey: result.tardy.fecha,
           monthKey: getMonthKeyFromDate(new Date(`${result.tardy.fecha}T${result.tardy.hora}`)),
           dateLabel: formatDateLong(new Date(`${result.tardy.fecha}T${result.tardy.hora}`)),
-          time: String(result.tardy.hora || manualTime).slice(0, 5),
+          time: recordTime,
           createdAt: new Date().toISOString()
         };
+
         renderStudentCard(record, result.tardy.current_month_count, result.tardy.total_historic_count);
         await refreshAll();
         resetEntryUI();
+        closeManualEntryModal();
+
         showModal({
           title: 'INGRESO MANUAL REGISTRADO',
-          message: `Se registró un ingreso manual para <strong>${studentName}</strong> a las <strong>${record.time}</strong>. ${observation ? `<br><br><strong>Observación:</strong> ${observation}` : ''}<br><br>Se envió correo al estudiante y copia a <strong>${INSPECTORIA_EMAIL}</strong>.`,
-          buttonText: 'ACEPTAR',
+          message:
+            `Se registró un ingreso manual para <strong>${studentName}</strong> a las <strong>${recordTime}</strong>.` +
+            `<br><br><strong>Observación:</strong> ${observationMessage}` +
+            `<br><br>Se envió correo al estudiante y copia a <strong>${INSPECTORIA_EMAIL}</strong>.`,
+          buttonText: 'Cerrar',
           type: getLateVisualState(result.tardy.current_month_count, 'atraso'),
           details: {
             student: studentName,
             course: result.student.curso,
-            time: record.time
+            time: recordTime
+          },
+          onClose: () => {
+            manualRutInput.value = '';
+            manualTimeInput.value = getCurrentChileHhmm();
+            manualObservationInput.value = '';
+            manualPhotoInput.value = '';
+            manualPhotoName.textContent = 'Sin archivo adjunto.';
+            manualPhotoPreview.hidden = true;
+            manualPhotoPreviewImg.removeAttribute('src');
           }
         });
       } catch (error) {
         showModal({
           title: 'NO SE PUDO REGISTRAR',
           message: error instanceof Error ? error.message : 'Ocurrió un error al registrar el ingreso manual.',
-          buttonText: 'VOLVER',
+          buttonText: 'Cerrar',
           type: 'error'
         });
       } finally {
