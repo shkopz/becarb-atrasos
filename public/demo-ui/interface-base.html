@@ -325,6 +325,175 @@
       border: 1px solid rgba(214,54,73,0.15);
     }
 
+
+    .btn-admin-spotlight {
+      background: linear-gradient(135deg, rgba(29,116,183,0.10), rgba(73,182,222,0.18));
+      color: var(--becarb-deep);
+      border-color: rgba(29,116,183,0.22);
+      box-shadow: 0 12px 24px rgba(29,116,183,0.14);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-admin-spotlight::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.38), transparent);
+      transform: translateX(-130%);
+      transition: transform 0.45s ease;
+      pointer-events: none;
+    }
+
+    .btn-admin-spotlight:hover::after,
+    .btn-admin-spotlight:focus-visible::after {
+      transform: translateX(130%);
+    }
+
+    .btn-admin-spotlight:hover,
+    .btn-admin-spotlight:focus-visible {
+      transform: translateY(-1px);
+      box-shadow: 0 16px 28px rgba(29,116,183,0.18);
+    }
+
+    .manual-entry-trigger {
+      background: linear-gradient(180deg, #ffffff, #f3f8fc);
+      border-color: rgba(29,116,183,0.14);
+      color: var(--text);
+    }
+
+    .manual-entry-card {
+      width: min(640px, 100%);
+    }
+
+    .manual-entry-card .modal-head {
+      padding-bottom: 14px;
+    }
+
+    .manual-entry-card .modal-copy {
+      margin: 10px 0 0;
+      max-width: 58ch;
+    }
+
+    .manual-entry-body {
+      padding: 18px 22px 8px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .manual-modal-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.8fr;
+      gap: 12px;
+    }
+
+    .manual-modal-field {
+      display: grid;
+      gap: 8px;
+    }
+
+    .manual-modal-field label {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--becarb-slate);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .manual-modal-field input,
+    .manual-modal-field textarea {
+      width: 100%;
+      border: 1px solid rgba(29,116,183,0.16);
+      border-radius: 18px;
+      padding: 15px 16px;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+      background: rgba(255,255,255,0.96);
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.16s ease;
+    }
+
+    .manual-modal-field textarea {
+      min-height: 118px;
+      resize: vertical;
+      line-height: 1.5;
+    }
+
+    .manual-modal-field input:focus,
+    .manual-modal-field textarea:focus {
+      border-color: rgba(29,116,183,0.32);
+      box-shadow: 0 0 0 4px rgba(73,182,222,0.12);
+      transform: translateY(-1px);
+    }
+
+    .manual-helper-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      width: fit-content;
+      padding: 10px 12px;
+      border-radius: 999px;
+      background: rgba(29,116,183,0.08);
+      color: var(--becarb-deep);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .manual-photo-shell {
+      padding: 16px;
+      border-radius: 20px;
+      background: linear-gradient(180deg, #f9fcff 0%, #f2f8fc 100%);
+      border: 1px solid rgba(29,116,183,0.10);
+    }
+
+    .manual-help {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .manual-file-name {
+      margin-top: 10px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.9);
+      border: 1px dashed rgba(29,116,183,0.18);
+      color: var(--becarb-slate);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .manual-preview {
+      margin-top: 12px;
+      border-radius: 18px;
+      overflow: hidden;
+      border: 1px solid rgba(29,116,183,0.12);
+      background: #fff;
+      box-shadow: 0 12px 24px rgba(14, 34, 60, 0.08);
+    }
+
+    .manual-preview img {
+      width: 100%;
+      max-height: 260px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .manual-actions {
+      padding: 0 22px 22px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .manual-actions .btn {
+      min-width: 196px;
+    }
+
     .keypad {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -360,17 +529,12 @@
     }
 
     
-    .helper-paste {
-      min-width: 160px;
-      white-space: nowrap;
-    }
-
     .scan-box {
       display: none;
       position: fixed;
       inset: 0;
       z-index: 1100;
-      background: rgba(8, 17, 30, 0.98);
+      background: rgba(8, 17, 30, 0.96);
       align-items: stretch;
       justify-content: stretch;
       padding: 0;
@@ -400,8 +564,6 @@
       background: rgba(8, 17, 30, 0.92);
       border-bottom: 1px solid rgba(255,255,255,0.08);
       color: white;
-      position: relative;
-      z-index: 3;
     }
 
     .scan-title {
@@ -436,7 +598,6 @@
       min-height: 0;
       background: #000;
       overflow: hidden;
-      isolation: isolate;
     }
 
     #qrVideo {
@@ -447,7 +608,6 @@
       min-height: 0;
       max-height: none;
       object-fit: cover;
-      filter: saturate(1.04) contrast(1.02);
     }
 
     .scan-overlay {
@@ -456,172 +616,14 @@
       pointer-events: none;
       display: grid;
       place-items: center;
-      z-index: 2;
-    }
-
-    .scan-mask {
-      position: absolute;
-      inset: 0;
-      background:
-        linear-gradient(rgba(0,0,0,0.54), rgba(0,0,0,0.54)),
-        linear-gradient(rgba(0,0,0,0.54), rgba(0,0,0,0.54)),
-        linear-gradient(rgba(0,0,0,0.54), rgba(0,0,0,0.54)),
-        linear-gradient(rgba(0,0,0,0.54), rgba(0,0,0,0.54));
-      background-repeat: no-repeat;
-      background-size:
-        100% calc(50% - min(37vw, 180px)),
-        100% calc(50% - min(37vw, 180px)),
-        calc(50% - min(37vw, 180px)) min(74vw, 360px),
-        calc(50% - min(37vw, 180px)) min(74vw, 360px);
-      background-position:
-        top left,
-        bottom left,
-        center left,
-        center right;
     }
 
     .scan-frame {
-      position: relative;
       width: min(74vw, 360px);
       height: min(74vw, 360px);
-      border: 2px solid rgba(255,255,255,0.9);
+      border: 3px solid rgba(255,255,255,0.86);
       border-radius: 28px;
-      box-shadow:
-        0 0 0 999px rgba(0,0,0,0.16),
-        0 0 0 1px rgba(255,255,255,0.16) inset,
-        0 18px 30px rgba(0,0,0,0.24);
-      overflow: hidden;
-      background: transparent;
-      transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
-    }
-
-    .scan-frame.is-detected {
-      transform: scale(1.015);
-      border-color: rgba(255,255,255,1);
-    }
-
-    .scan-corners .corner {
-      position: absolute;
-      width: 34px;
-      height: 34px;
-      border-color: rgba(255,255,255,0.96);
-      border-style: solid;
-      border-width: 0;
-      filter: drop-shadow(0 4px 10px rgba(0,0,0,0.28));
-    }
-
-    .scan-corners .tl { top: 12px; left: 12px; border-top-width: 5px; border-left-width: 5px; border-top-left-radius: 14px; }
-    .scan-corners .tr { top: 12px; right: 12px; border-top-width: 5px; border-right-width: 5px; border-top-right-radius: 14px; }
-    .scan-corners .bl { bottom: 12px; left: 12px; border-bottom-width: 5px; border-left-width: 5px; border-bottom-left-radius: 14px; }
-    .scan-corners .br { bottom: 12px; right: 12px; border-bottom-width: 5px; border-right-width: 5px; border-bottom-right-radius: 14px; }
-
-    .scan-laser {
-      position: absolute;
-      left: 8%;
-      right: 8%;
-      top: 14%;
-      height: 3px;
-      border-radius: 999px;
-      background: linear-gradient(90deg, transparent, rgba(255,36,36,0.95), transparent);
-      box-shadow: 0 0 0 1px rgba(255,40,40,0.12), 0 0 18px rgba(255,54,54,0.72);
-      animation: scanLaserMove 2.1s ease-in-out infinite;
-      opacity: 0.96;
-    }
-
-    @keyframes scanLaserMove {
-      0% { transform: translateY(0); opacity: 0.4; }
-      12% { opacity: 1; }
-      50% { transform: translateY(calc(min(74vw, 360px) - 54px)); opacity: 0.95; }
-      100% { transform: translateY(0); opacity: 0.4; }
-    }
-
-    .scan-center-copy {
-      position: absolute;
-      left: 50%;
-      bottom: max(30px, env(safe-area-inset-bottom) + 18px);
-      transform: translateX(-50%);
-      padding: 10px 14px;
-      border-radius: 999px;
-      background: rgba(8,17,30,0.68);
-      border: 1px solid rgba(255,255,255,0.16);
-      color: rgba(255,255,255,0.92);
-      font-size: 13px;
-      font-weight: 700;
-      line-height: 1.2;
-      backdrop-filter: blur(10px);
-      white-space: nowrap;
-      text-align: center;
-      max-width: calc(100vw - 36px);
-    }
-
-    .scan-processing {
-      position: absolute;
-      inset: 0;
-      display: grid;
-      place-items: center;
-      gap: 12px;
-      background: rgba(8,17,30,0.44);
-      backdrop-filter: blur(6px);
-      text-align: center;
-      padding: 24px;
-    }
-
-    .scan-processing[hidden] {
-      display: none !important;
-    }
-
-    .scan-spinner {
-      width: 62px;
-      height: 62px;
-      border-radius: 999px;
-      border: 4px solid rgba(255,255,255,0.18);
-      border-top-color: rgba(255,255,255,0.96);
-      animation: scanSpin 0.85s linear infinite;
-      box-shadow: 0 0 18px rgba(255,255,255,0.18);
-    }
-
-    @keyframes scanSpin {
-      to { transform: rotate(360deg); }
-    }
-
-    .scan-processing-text {
-      color: rgba(255,255,255,0.96);
-      font-size: 16px;
-      font-weight: 800;
-      letter-spacing: 0.01em;
-      text-shadow: 0 4px 18px rgba(0,0,0,0.36);
-    }
-
-    .scan-flash {
-      position: absolute;
-      inset: 0;
-      opacity: 0;
-      transition: opacity 0.18s ease;
-      background: transparent;
-      mix-blend-mode: screen;
-    }
-
-    .scan-flash.show {
-      opacity: 1;
-      animation: scanFlashPulse 0.58s ease;
-    }
-
-    .scan-flash.category-a {
-      background: radial-gradient(circle at center, rgba(210,142,8,0.34), rgba(210,142,8,0.18), transparent 72%);
-    }
-
-    .scan-flash.category-b {
-      background: radial-gradient(circle at center, rgba(183,106,0,0.36), rgba(183,106,0,0.2), transparent 72%);
-    }
-
-    .scan-flash.category-c {
-      background: radial-gradient(circle at center, rgba(214,54,73,0.38), rgba(214,54,73,0.22), transparent 72%);
-    }
-
-    @keyframes scanFlashPulse {
-      0% { opacity: 0; }
-      20% { opacity: 1; }
-      100% { opacity: 0; }
+      box-shadow: 0 0 0 999px rgba(0,0,0,0.26);
     }
 
     .scan-note {
@@ -631,8 +633,6 @@
       font-size: 13px;
       line-height: 1.5;
       border-top: 1px solid rgba(255,255,255,0.08);
-      position: relative;
-      z-index: 3;
     }
 
     @media (max-width: 640px) {
@@ -643,19 +643,8 @@
         width: min(78vw, 320px);
         height: min(78vw, 320px);
       }
-      .scan-mask {
-        background-size:
-          100% calc(50% - min(39vw, 160px)),
-          100% calc(50% - min(39vw, 160px)),
-          calc(50% - min(39vw, 160px)) min(78vw, 320px),
-          calc(50% - min(39vw, 160px)) min(78vw, 320px);
-      }
-      .scan-center-copy {
-        font-size: 12px;
-        white-space: normal;
-        width: min(90vw, 320px);
-      }
     }
+
 
     .status {
       display: none;
@@ -819,7 +808,22 @@
       color: var(--muted);
     }
 
+    .sample-list {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
 
+    .chip {
+      background: white;
+      border-radius: 999px;
+      border: 1px solid #d8e6f2;
+      padding: 10px 12px;
+      color: var(--becarb-deep);
+      font-size: 13px;
+      font-weight: 800;
+    }
 
     .table-wrap {
       overflow: auto;
@@ -1123,6 +1127,22 @@
     .modal-footer .btn { min-width: 210px; }
 
 
+    @media (max-width: 720px) {
+      .manual-modal-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .manual-actions .btn {
+        width: 100%;
+        min-width: 0;
+      }
+
+      .btn-admin-spotlight {
+        width: 100%;
+      }
+    }
+
+
     @media (max-width: 980px) {
       .hero, .grid {
         grid-template-columns: 1fr;
@@ -1338,6 +1358,50 @@
     .login-field input:focus {
       border-color: rgba(29,116,183,0.32);
       box-shadow: 0 0 0 4px rgba(73,182,222,0.12);
+    }
+
+
+    .password-input-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .password-input-wrap input {
+      padding-right: 92px;
+    }
+
+    .password-toggle {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      min-width: 74px;
+      border: 1px solid rgba(29,116,183,0.14);
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: linear-gradient(180deg, #ffffff, #f1f7fc);
+      color: var(--becarb-deep);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      box-shadow: 0 8px 16px rgba(16, 36, 62, 0.06);
+      transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+      z-index: 1;
+    }
+
+    .password-toggle:hover,
+    .password-toggle:focus-visible {
+      transform: translateY(-50%) scale(1.02);
+      box-shadow: 0 12px 22px rgba(16, 36, 62, 0.10);
+      background: linear-gradient(180deg, #ffffff, #ebf5fc);
+    }
+
+    .password-toggle.is-active {
+      background: linear-gradient(135deg, rgba(29,116,183,0.10), rgba(73,182,222,0.18));
+      border-color: rgba(29,116,183,0.20);
+      color: var(--becarb-deep);
     }
 
     .login-actions {
@@ -1694,7 +1758,10 @@
 
           <div class="login-field">
             <label for="loginPassword">Clave</label>
-            <input id="loginPassword" name="password" type="password" autocomplete="current-password" placeholder="Clave de acceso" />
+            <div class="password-input-wrap">
+              <input id="loginPassword" name="password" type="password" autocomplete="current-password" placeholder="Clave de acceso" />
+              <button class="password-toggle" id="loginPasswordToggle" type="button" aria-label="Mostrar contraseña">Ver</button>
+            </div>
           </div>
 
           <div class="login-actions">
@@ -1743,9 +1810,9 @@
           <span class="tag">Beta demo · Control de atrasos</span>
           <h1>Ingreso rápido por RUT o QR, con hora automática del sistema.</h1>
           <p>
-            Esta versión de demostración replica el flujo de portería: lectura de RUT base o completo,
+            Esta versión de demostración simula el flujo de portería: lectura de RUT sin dígito verificador,
             cruce con la base de estudiantes, bloqueo de duplicados en el día, conteo mensual de atrasos y
-            preparación del informe final con notificación a estudiantes.
+            preparación del informe final con notificación simulada al correo del alumno.
           </p>
         </div>
       </article>
@@ -1758,7 +1825,7 @@
         </div>
         <div class="mini-note">
           <strong>Reglas activas del beta:</strong><br>
-          Categoría A de 08:05 a 08:15 · Categoría B de 08:16 a 08:30 · Categoría C desde 08:31 en adelante.<br>
+          Categoría A de 08:10 a 08:20 · Categoría B de 08:21 a 08:30 · Categoría C desde 08:31.<br>
           El conteo se acumula por mes calendario.
         </div>
       </aside>
@@ -1774,11 +1841,18 @@
           <span class="badge-inline" id="monthBadge">Periodo actual</span>
         </div>
 
+        <div class="flow">
+          <span>1. Leer RUT</span>
+          <span>2. Buscar alumno</span>
+          <span>3. Guardar ingreso</span>
+          <span>4. Contar atrasos</span>
+          <span>5. Alertar sobre 3</span>
+        </div>
 
         <div class="entry-wrap">
           <div class="entry-box">
             <h3>Ingreso manual</h3>
-            <p>Puedes digitar o pegar el RUT base, o también el RUT completo con guión. El sistema lo normaliza automáticamente.</p>
+            <p>Se digita solo la parte numérica del RUT. Sin puntos, sin guion, sin dígito verificador.</p>
 
             <div class="field">
               <label for="rutInput">RUT numérico</label>
@@ -1795,8 +1869,7 @@
             </div>
 
             <div class="helper-row">
-              <div class="helper">Ingresa o pega el RUT sin dígito verificador. Puedes ingresar el RUT base o el RUT completo con guión. El sistema normaliza ambos formatos.</div>
-              <button class="btn btn-secondary helper-paste" id="pasteRutButton" type="button">📋 Pegar RUT</button>
+              <div class="helper">Ingresa o pega el RUT sin dígito verificador. El sistema acepta 8 o 9 dígitos y el QR funciona igual.</div>
             </div>
 
             <div class="keypad" id="keypad"></div>
@@ -1807,7 +1880,7 @@
 
             <div class="qr-wrap">
               <button class="btn btn-primary" id="scanButton">📷 Escanear QR</button>
-              <button class="btn btn-ghost" id="clearButton">Limpiar</button>
+              <button class="btn btn-secondary manual-entry-trigger" id="manualEntryButton">Ingreso manual</button>
             </div>
 
             <div class="scan-box" id="scanBox" aria-hidden="true">
@@ -1822,27 +1895,11 @@
                 <div class="scan-viewport">
                   <video id="qrVideo" playsinline muted></video>
                   <canvas id="qrCanvas" hidden></canvas>
-                  <div class="scan-overlay">
-                    <div class="scan-mask"></div>
-                    <div class="scan-frame" id="scanFrame">
-                      <div class="scan-corners">
-                        <span class="corner tl"></span>
-                        <span class="corner tr"></span>
-                        <span class="corner bl"></span>
-                        <span class="corner br"></span>
-                      </div>
-                      <div class="scan-laser"></div>
-                    </div>
-                    <div class="scan-center-copy" id="scanCenterCopy">Ubica un solo QR dentro del recuadro</div>
-                    <div class="scan-processing" id="scanProcessing" hidden>
-                      <div class="scan-spinner"></div>
-                      <div class="scan-processing-text" id="scanProcessingText">QR detectado. Validando alumno…</div>
-                    </div>
-                    <div class="scan-flash" id="scanFlash"></div>
-                  </div>
+                  <div class="scan-overlay"><div class="scan-frame"></div></div>
                 </div>
                 <div class="scan-note" id="scanNote">
-                  Apunta la cámara al QR que contiene solo el número de RUT. Si hay más de un código cerca, centra solo uno dentro del recuadro.
+                  Apunta la cámara al QR que contiene solo el número de RUT. Si el navegador no soporta lectura QR,
+                  usa la digitación manual.
                 </div>
               </div>
             </div>
@@ -2011,7 +2068,7 @@
 
       <div class="utility-actions">
         <button class="btn btn-danger" id="resetStudentButton">Resetear estudiante</button>
-        <a class="btn btn-secondary" href="/gestion-datos" id="dataManagementButton">Gestión de Datos</a>
+        <a class="btn btn-secondary btn-admin-spotlight" href="/gestion-datos" id="dataManagementButton">📊 Gestión de Datos</a>
       </div>
 
       <div class="automation-note">
@@ -2101,6 +2158,53 @@
   </div>
 
 
+  <div class="modal-backdrop" id="manualEntryModal" aria-hidden="true">
+    <div class="modal-card manual-entry-card" role="dialog" aria-modal="true" aria-labelledby="manualEntryTitle">
+      <div class="modal-head">
+        <div class="modal-kicker info">Ingreso manual</div>
+        <h2 class="modal-title" id="manualEntryTitle">Registrar ingreso manual</h2>
+        <p class="modal-copy">Ingresa el RUT, ajusta la hora del ingreso, agrega una observación si corresponde y adjunta un respaldo fotográfico solo si lo necesitas. El sistema enviará correo al estudiante y copia a inspectoría.</p>
+      </div>
+
+      <div class="manual-entry-body">
+        <div class="manual-helper-chip">Operación con respaldo opcional</div>
+
+        <div class="manual-modal-grid">
+          <div class="manual-modal-field">
+            <label for="manualRutInput">RUT del estudiante</label>
+            <input id="manualRutInput" type="text" inputmode="text" autocomplete="off" placeholder="23.397.446-3" />
+          </div>
+          <div class="manual-modal-field">
+            <label for="manualTimeInput">Hora de ingreso</label>
+            <input id="manualTimeInput" type="time" step="60" />
+          </div>
+        </div>
+
+        <div class="manual-modal-field">
+          <label for="manualObservationInput">Observación</label>
+          <textarea id="manualObservationInput" placeholder="Ej: Presenta certificado médico / Transporte con atraso / Ingreso autorizado por inspectoría."></textarea>
+          <div class="manual-help">La observación se incluirá en el correo del estudiante y en la copia enviada a inspectoría.</div>
+        </div>
+
+        <div class="manual-photo-shell">
+          <div class="manual-modal-field">
+            <label for="manualPhotoInput">Respaldo fotográfico (opcional)</label>
+            <input id="manualPhotoInput" type="file" accept="image/*" capture="environment" />
+            <div class="manual-file-name" id="manualPhotoName">Sin archivo adjunto.</div>
+            <div class="manual-preview" id="manualPhotoPreview" hidden>
+              <img id="manualPhotoPreviewImg" alt="Vista previa del respaldo" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="manual-actions">
+        <button class="btn btn-ghost" type="button" id="manualEntryCancel">Cancelar</button>
+        <button class="btn btn-primary" type="button" id="manualEntrySubmit">Registrar ingreso manual</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-backdrop" id="resetStudentModal" aria-hidden="true">
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="resetStudentTitle">
       <div class="modal-head">
@@ -2155,6 +2259,7 @@
     const loginForm = document.getElementById('loginForm');
     const loginUser = document.getElementById('loginUser');
     const loginPassword = document.getElementById('loginPassword');
+    const loginPasswordToggle = document.getElementById('loginPasswordToggle');
     const loginError = document.getElementById('loginError');
     const forgotPasswordToggle = document.getElementById('forgotPasswordToggle');
     const passwordResetPanel = document.getElementById('passwordResetPanel');
@@ -2182,7 +2287,8 @@
     const studentLateCard = document.getElementById('studentLateCard');
     const studentStatusCard = document.getElementById('studentStatusCard');
     const registerButton = document.getElementById('registerButton');
-    const clearButton = document.getElementById('clearButton');
+    const manualEntryButton = document.getElementById('manualEntryButton');
+    const sampleList = document.getElementById('sampleList');
     const statsGrid = document.getElementById('statsGrid');
     const todayTableBody = document.getElementById('todayTableBody');
     const reportTableBody = document.getElementById('reportTableBody');
@@ -2202,16 +2308,21 @@
     const scanBox = document.getElementById('scanBox');
     const scanCloseButton = document.getElementById('scanCloseButton');
     const scanNote = document.getElementById('scanNote');
-    const scanFrame = document.getElementById('scanFrame');
-    const scanCenterCopy = document.getElementById('scanCenterCopy');
-    const scanProcessing = document.getElementById('scanProcessing');
-    const scanProcessingText = document.getElementById('scanProcessingText');
-    const scanFlash = document.getElementById('scanFlash');
-    const pasteRutButton = document.getElementById('pasteRutButton');
     const qrVideo = document.getElementById('qrVideo');
     const qrCanvas = document.getElementById('qrCanvas');
     const liveClock = document.getElementById('liveClock');
     const liveDate = document.getElementById('liveDate');
+
+    const manualEntryModal = document.getElementById('manualEntryModal');
+    const manualRutInput = document.getElementById('manualRutInput');
+    const manualTimeInput = document.getElementById('manualTimeInput');
+    const manualObservationInput = document.getElementById('manualObservationInput');
+    const manualPhotoInput = document.getElementById('manualPhotoInput');
+    const manualPhotoName = document.getElementById('manualPhotoName');
+    const manualPhotoPreview = document.getElementById('manualPhotoPreview');
+    const manualPhotoPreviewImg = document.getElementById('manualPhotoPreviewImg');
+    const manualEntryCancel = document.getElementById('manualEntryCancel');
+    const manualEntrySubmit = document.getElementById('manualEntrySubmit');
 
     const resetStudentModal = document.getElementById('resetStudentModal');
     const resetStudentForm = document.getElementById('resetStudentForm');
@@ -2226,10 +2337,8 @@
     let modalCancelHandler = null;
     let lastFocusedBeforeModal = null;
     let lastFocusedBeforeResetModal = null;
+    let lastFocusedBeforeManualModal = null;
     let audioContext = null;
-    let scanDetectedCooldown = false;
-    let scanShouldReopenAfterModal = false;
-    let scanFlashTimer = null;
 
     const emptyState = () => ({
       records: [],
@@ -2244,19 +2353,19 @@
     const sanitizeRutNumber = (value) => {
       const raw = String(value || '').trim().toUpperCase();
       if (!raw) return '';
-
       if (raw.includes('-')) {
         const [base] = raw.split('-');
         return String(base || '').replace(/\D/g, '').slice(0, 9);
       }
-
       const digitsOnly = raw.replace(/\D/g, '');
-
-      if (digitsOnly.length === 9) {
-        return digitsOnly.slice(0, 8);
-      }
-
+      if (digitsOnly.length === 9) return digitsOnly.slice(0, 8);
       return digitsOnly.slice(0, 9);
+    };
+
+    const scrollViewportTop = () => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
     };
 
     const monthName = (monthNumber) => [
@@ -2386,6 +2495,27 @@
     const currentUser = () => sessionStorage.getItem(LOGIN_USERNAME_KEY) || '';
     const currentRole = () => sessionStorage.getItem(LOGIN_ROLE_KEY) || 'admin';
 
+
+    const togglePasswordField = (input, button) => {
+      if (!input || !button) return;
+      const nextType = input.type === 'password' ? 'text' : 'password';
+      input.type = nextType;
+      button.textContent = nextType === 'password' ? 'Ver' : 'Ocultar';
+      button.setAttribute('aria-label', nextType === 'password' ? 'Mostrar contraseña' : 'Ocultar contraseña');
+      button.classList.toggle('is-active', nextType === 'text');
+    };
+
+    const getCurrentChileHhmm = () => {
+      const parts = new Intl.DateTimeFormat('sv-SE', {
+        timeZone: 'America/Santiago',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      }).formatToParts(new Date());
+      const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+      return `${map.hour}:${map.minute}`;
+    };
+
     const hideBootScreen = () => {
       bootScreen.hidden = true;
     };
@@ -2423,11 +2553,13 @@
 
         studentsLoaded = true;
         studentsLoadError = '';
+        renderSamples();
         return true;
       } catch (error) {
         students = [];
         studentsLoaded = false;
         studentsLoadError = error instanceof Error ? error.message : 'No se pudo cargar la nómina de estudiantes.';
+        renderSamples();
         console.error('Error cargando alumnos:', error);
         return false;
       }
@@ -2680,6 +2812,149 @@
       lastEntrySource = 'manual';
       studentCard.classList.remove('show');
       clearStatus();
+    };
+
+
+    const openManualEntryModal = () => {
+      lastFocusedBeforeManualModal = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      manualRutInput.value = rutInput.value || '';
+      manualTimeInput.value = getCurrentChileHhmm();
+      manualObservationInput.value = '';
+      manualPhotoInput.value = '';
+      manualPhotoName.textContent = 'Sin archivo adjunto.';
+      manualPhotoPreview.hidden = true;
+      manualPhotoPreviewImg.removeAttribute('src');
+      manualEntrySubmit.disabled = false;
+      manualEntrySubmit.textContent = 'Registrar ingreso manual';
+      manualEntryModal.classList.add('show');
+      manualEntryModal.setAttribute('aria-hidden', 'false');
+      window.setTimeout(() => manualRutInput.focus(), 40);
+    };
+
+    const closeManualEntryModal = () => {
+      if (document.activeElement && manualEntryModal.contains(document.activeElement)) {
+        document.activeElement.blur();
+      }
+      manualEntryModal.classList.remove('show');
+      manualEntryModal.setAttribute('aria-hidden', 'true');
+      if (lastFocusedBeforeManualModal && typeof lastFocusedBeforeManualModal.focus === 'function') {
+        window.setTimeout(() => lastFocusedBeforeManualModal.focus(), 20);
+      }
+      lastFocusedBeforeManualModal = null;
+    };
+
+    const updateManualPhotoPreview = () => {
+      const file = manualPhotoInput.files && manualPhotoInput.files[0] ? manualPhotoInput.files[0] : null;
+      if (!file) {
+        manualPhotoName.textContent = 'Sin archivo adjunto.';
+        manualPhotoPreview.hidden = true;
+        manualPhotoPreviewImg.removeAttribute('src');
+        return;
+      }
+      manualPhotoName.textContent = file.name;
+      const reader = new FileReader();
+      reader.onload = () => {
+        manualPhotoPreviewImg.src = String(reader.result || '');
+        manualPhotoPreview.hidden = false;
+      };
+      reader.readAsDataURL(file);
+    };
+
+    const submitManualEntry = async () => {
+      const rutValue = sanitizeRutNumber(manualRutInput.value);
+      const manualTime = String(manualTimeInput.value || '').slice(0, 5);
+      const observation = (manualObservationInput.value || '').trim();
+      manualRutInput.value = rutValue;
+
+      if (!rutValue) {
+        showModal({
+          title: 'INGRESA UN RUT',
+          message: 'Debes ingresar un RUT válido para registrar el ingreso manual.',
+          buttonText: 'VOLVER',
+          type: 'error'
+        });
+        return;
+      }
+
+      if (!/^\d{2}:\d{2}$/.test(manualTime)) {
+        showModal({
+          title: 'HORA INVÁLIDA',
+          message: 'Debes indicar una hora válida para el ingreso manual.',
+          buttonText: 'VOLVER',
+          type: 'error'
+        });
+        return;
+      }
+
+      try {
+        manualEntrySubmit.disabled = true;
+        manualEntrySubmit.textContent = 'Registrando...';
+
+        const formData = new FormData();
+        formData.append('rut_base', rutValue);
+        formData.append('hora_ingreso', manualTime);
+        formData.append('observacion', observation);
+        formData.append('created_by', currentUser() || 'desconocido');
+        const evidenceFile = manualPhotoInput.files && manualPhotoInput.files[0] ? manualPhotoInput.files[0] : null;
+        if (evidenceFile) {
+          formData.append('evidencia', evidenceFile);
+        }
+
+        const response = await fetch('/api/register-tardy-manual', {
+          method: 'POST',
+          body: formData
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.ok) {
+          throw new Error(result.message || 'No se pudo registrar el ingreso manual.');
+        }
+
+        closeManualEntryModal();
+        const studentName = `${result.student.nombres} ${result.student.apellidos}`.trim();
+        const record = {
+          studentId: result.student.id,
+          nombre: studentName,
+          rutFull: result.student.rut_completo,
+          rutNumber: result.student.rut_base,
+          curso: result.student.curso,
+          email: result.student.email || 'Sin correo',
+          estado: 'atraso',
+          categoria: result.tardy.categoria,
+          label: `Atraso ${result.tardy.categoria}`,
+          pillClass: result.tardy.categoria === 'A' ? 'a' : result.tardy.categoria === 'B' ? 'b' : 'c',
+          dateKey: result.tardy.fecha,
+          monthKey: getMonthKeyFromDate(new Date(`${result.tardy.fecha}T${result.tardy.hora}`)),
+          dateLabel: formatDateLong(new Date(`${result.tardy.fecha}T${result.tardy.hora}`)),
+          time: String(result.tardy.hora || manualTime).slice(0, 5),
+          createdAt: new Date().toISOString()
+        };
+        renderStudentCard(record, result.tardy.current_month_count, result.tardy.total_historic_count);
+        await refreshAll();
+        resetEntryUI();
+        showModal({
+          title: 'INGRESO MANUAL REGISTRADO',
+          message: `Se registró un ingreso manual para <strong>${studentName}</strong> a las <strong>${record.time}</strong>. ${observation ? `<br><br><strong>Observación:</strong> ${observation}` : ''}<br><br>Se envió correo al estudiante y copia a <strong>${INSPECTORIA_EMAIL}</strong>.`,
+          buttonText: 'ACEPTAR',
+          type: getLateVisualState(result.tardy.current_month_count, 'atraso'),
+          details: {
+            student: studentName,
+            course: result.student.curso,
+            time: record.time
+          }
+        });
+      } catch (error) {
+        showModal({
+          title: 'NO SE PUDO REGISTRAR',
+          message: error instanceof Error ? error.message : 'Ocurrió un error al registrar el ingreso manual.',
+          buttonText: 'VOLVER',
+          type: 'error'
+        });
+      } finally {
+        manualEntrySubmit.disabled = false;
+        manualEntrySubmit.textContent = 'Registrar ingreso manual';
+      }
     };
 
     const hideModal = (trigger = 'action') => {
@@ -3080,6 +3355,7 @@
 
     const showLoginScreen = () => {
       hideBootScreen();
+      scrollViewportTop();
       loginScreen.hidden = false;
       appShell.hidden = true;
       document.body.classList.remove('role-admin', 'role-user');
@@ -3257,102 +3533,27 @@
       }
     };
 
-    const setScanProcessingState = (active, message = 'QR detectado. Validando alumno…') => {
-      if (!scanProcessing) return;
-      scanProcessing.hidden = !active;
-      if (scanProcessingText) scanProcessingText.textContent = message;
-      if (scanFrame) scanFrame.classList.toggle('is-detected', !!active);
-      if (scanCenterCopy) scanCenterCopy.hidden = !!active;
-    };
-
-    const triggerScanFlash = (categoria = 'A') => new Promise((resolve) => {
-      if (!scanFlash) {
-        resolve();
-        return;
-      }
-      if (scanFlashTimer) window.clearTimeout(scanFlashTimer);
-      const flashClass =
-        categoria === 'C' ? 'category-c' :
-        categoria === 'B' ? 'category-b' :
-        'category-a';
-
-      scanFlash.className = `scan-flash ${flashClass} show`;
-      scanFlashTimer = window.setTimeout(() => {
-        scanFlash.className = 'scan-flash';
-        resolve();
-      }, 620);
-    });
-
-    const tryOpenFullscreen = async () => {
-      const target = scanBox;
-      if (!target || !target.requestFullscreen) return;
-      try {
-        if (!document.fullscreenElement) {
-          await target.requestFullscreen({ navigationUI: 'hide' });
-        }
-      } catch {
-        // ignore fullscreen errors
-      }
-    };
-
-    const exitFullscreenIfNeeded = async () => {
-      try {
-        if (document.fullscreenElement) {
-          await document.exitFullscreen();
-        }
-      } catch {
-        // ignore
-      }
-    };
-
-    const stopScanner = async () => {
+    const stopScanner = () => {
       scanLoopActive = false;
-      scanDetectedCooldown = false;
-      setScanProcessingState(false);
       if (activeStream) {
         activeStream.getTracks().forEach((track) => track.stop());
         activeStream = null;
       }
       qrVideo.srcObject = null;
-      document.body.style.overflow = '';
       scanBox.classList.remove('active');
       scanBox.setAttribute('aria-hidden', 'true');
       scanButton.textContent = '📷 Escanear QR';
-      await exitFullscreenIfNeeded();
-    };
-
-    const pasteRutFromClipboard = async () => {
-      try {
-        let text = '';
-        if (navigator.clipboard && navigator.clipboard.readText) {
-          text = await navigator.clipboard.readText();
-        }
-        const digits = sanitizeRutNumber(text);
-        if (!digits) {
-          renderStatus('No se encontró un RUT válido en el portapapeles.', 'error');
-          return;
-        }
-        rutInput.value = digits;
-        lastEntrySource = 'manual';
-        renderStatus(`RUT pegado correctamente: <strong>${digits}</strong>.`, 'success');
-      } catch {
-        renderStatus('No se pudo leer el portapapeles. Prueba con Ctrl + V dentro del campo.', 'error');
-      }
     };
 
     const processScannedText = (value) => {
       const digits = sanitizeRutNumber(String(value || ''));
       lastEntrySource = 'qr';
-      if (!digits || scanDetectedCooldown) return false;
-      scanDetectedCooldown = true;
+      if (!digits) return false;
       rutInput.value = digits;
-      setScanProcessingState(true, 'QR detectado. Validando alumno…');
-      vibrateFeedback('success');
       renderStatus(`QR leído correctamente. RUT numérico capturado: <strong>${digits}</strong>. Registrando ingreso automáticamente...`, 'success');
+      stopScanner();
       window.setTimeout(() => {
-        stopScanner().then(() => {
-          registerCurrentRut();
-        });
+        registerCurrentRut();
       }, 120);
       return true;
     };
@@ -3374,27 +3575,19 @@
       }
 
       try {
-        document.body.style.overflow = 'hidden';
         activeStream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { ideal: 'environment' },
-            width: { ideal: 1920 },
-            height: { ideal: 1080 }
-          },
+          video: { facingMode: { ideal: 'environment' } },
           audio: false
         });
 
         qrVideo.srcObject = activeStream;
         await qrVideo.play();
         scanLoopActive = true;
-        scanDetectedCooldown = false;
         scanBox.classList.add('active');
         scanBox.setAttribute('aria-hidden', 'false');
         scanButton.textContent = '✖ Cerrar cámara';
-        scanNote.textContent = 'Centra un solo QR dentro del recuadro. Si hay varios códigos cerca, acércate al que deseas leer.';
-        setScanProcessingState(false);
+        scanNote.textContent = 'Apunta al QR con el número de RUT. La lectura se completa automáticamente.';
         scanCloseButton.focus();
-        tryOpenFullscreen();
 
         const hasNativeQr = 'BarcodeDetector' in window;
         let detector = null;
@@ -3407,35 +3600,25 @@
         }
 
         const tick = async () => {
-          if (!scanLoopActive || scanDetectedCooldown) return;
+          if (!scanLoopActive) return;
 
           try {
             let rawValue = '';
 
-            if (qrVideo.readyState >= 2) {
+            if (detector) {
+              const barcodes = await detector.detect(qrVideo);
+              if (barcodes.length) rawValue = barcodes[0].rawValue || '';
+            } else if (window.jsQR && qrVideo.readyState >= 2) {
               const width = qrVideo.videoWidth || 0;
               const height = qrVideo.videoHeight || 0;
-
               if (width && height) {
-                const cropRatio = 0.58;
-                const cropWidth = Math.floor(width * cropRatio);
-                const cropHeight = Math.floor(height * cropRatio);
-                const sx = Math.floor((width - cropWidth) / 2);
-                const sy = Math.floor((height - cropHeight) / 2);
-
-                qrCanvas.width = cropWidth;
-                qrCanvas.height = cropHeight;
+                qrCanvas.width = width;
+                qrCanvas.height = height;
                 const ctx = qrCanvas.getContext('2d', { willReadFrequently: true });
-                ctx.drawImage(qrVideo, sx, sy, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
-
-                if (detector) {
-                  const barcodes = await detector.detect(qrCanvas);
-                  if (barcodes.length) rawValue = barcodes[0].rawValue || '';
-                } else if (window.jsQR) {
-                  const imageData = ctx.getImageData(0, 0, cropWidth, cropHeight);
-                  const code = window.jsQR(imageData.data, cropWidth, cropHeight, { inversionAttempts: 'dontInvert' });
-                  if (code && code.data) rawValue = code.data;
-                }
+                ctx.drawImage(qrVideo, 0, 0, width, height);
+                const imageData = ctx.getImageData(0, 0, width, height);
+                const code = window.jsQR(imageData.data, width, height, { inversionAttempts: 'dontInvert' });
+                if (code && code.data) rawValue = code.data;
               }
             }
 
@@ -3449,7 +3632,6 @@
 
         requestAnimationFrame(tick);
       } catch {
-        document.body.style.overflow = '';
         renderStatus('No se pudo abrir la cámara. Revisa los permisos del navegador o usa la digitación manual.', 'error');
         stopScanner();
       }
@@ -3479,6 +3661,28 @@
       });
     };
 
+    const renderSamples = () => {
+      if (!sampleList) return;
+
+      if (!students.length) {
+        sampleList.innerHTML = `<div class="empty">${studentsLoadError ? 'No se pudo cargar la nómina real.' : 'No hay alumnos disponibles para mostrar.'}</div>`;
+        return;
+      }
+
+      sampleList.innerHTML = students.slice(0, 12).map((student) => `
+        <button class="chip" data-rut="${student.rutNumber}">${student.rutNumber} · ${student.nombres}</button>
+      `).join('');
+    };
+
+    if (sampleList) {
+      sampleList.addEventListener('click', (event) => {
+        const chip = event.target.closest('[data-rut]');
+        if (!chip) return;
+        lastEntrySource = 'manual';
+        rutInput.value = chip.dataset.rut;
+      });
+    }
+
     const registerCurrentRut = async () => {
       clearStatus();
       const value = sanitizeRutNumber(rutInput.value);
@@ -3506,8 +3710,18 @@
         return;
       }
 
-      const student = students.find((item) => item.rutNumber === value) || null;
-      const originatedFromQr = lastEntrySource === 'qr';
+
+      const student = students.find((item) => item.rutNumber === value);
+      if (!student) {
+        showModal({
+          title: 'RUT NO ENCONTRADO',
+          message: '',
+          buttonText: 'INGRESAR NUEVAMENTE',
+          type: 'error',
+          onClose: resetEntryUI
+        });
+        return;
+      }
 
       try {
         const response = await fetch('/api/register-tardy', {
@@ -3536,17 +3750,9 @@
           showModal({
             title: errorTitle,
             message: errorMessage,
-            buttonText: originatedFromQr ? 'Aceptar y escanear otro' : 'INGRESAR NUEVAMENTE',
+            buttonText: 'INGRESAR NUEVAMENTE',
             type: 'error',
-            onClose: () => {
-              resetEntryUI();
-              if (originatedFromQr) startScanner();
-            },
-            cancelText: originatedFromQr ? 'Cancelar' : null,
-            onCancel: originatedFromQr ? (() => {
-              resetEntryUI();
-              startScanner();
-            }) : null
+            onClose: resetEntryUI
           });
           return;
         }
@@ -3557,7 +3763,7 @@
         const state = loadState();
 
         const record = {
-          studentId: apiStudent.id || student?.id || value,
+          studentId: student.id,
           nombre: `${apiStudent.nombres} ${apiStudent.apellidos}`,
           rutFull: apiStudent.rut_completo,
           rutNumber: apiStudent.rut_base,
@@ -3594,45 +3800,27 @@
           message = `El ingreso quedó registrado como <strong>Atraso ${apiTardy.categoria}</strong>. Este es su <strong>${apiTardy.current_month_count}</strong> atraso vigente del mes. <br><br><strong>Histórico total:</strong> ${apiTardy.total_historic_count} atraso(s).`;
         }
 
-        if (originatedFromQr) {
-          await triggerScanFlash(apiTardy.categoria);
-        }
-
         showModal({
-          title: originatedFromQr ? 'ALUMNO IDENTIFICADO' : 'INGRESO REGISTRADO',
+          title: 'INGRESO REGISTRADO',
           message,
-          buttonText: originatedFromQr ? 'Aceptar y escanear otro' : 'Aceptar',
+          buttonText: 'OK',
           type: modalType,
           details: {
             student: record.nombre,
             course: record.curso,
             time: record.time
           },
-          onClose: () => {
-            resetEntryUI();
-            if (originatedFromQr) startScanner();
-          },
+          onClose: resetEntryUI,
           cancelText: 'Cancelar',
-          onCancel: () => {
-            undoLastAcceptedEntry(record.createdAt);
-            if (originatedFromQr) startScanner();
-          }
+          onCancel: () => undoLastAcceptedEntry(record.createdAt)
         });
       } catch {
         showModal({
           title: 'ERROR DE CONEXIÓN',
           message: 'No se pudo registrar el ingreso en el servidor. Intenta nuevamente.',
-          buttonText: originatedFromQr ? 'Aceptar y escanear otro' : 'INGRESAR NUEVAMENTE',
+          buttonText: 'INGRESAR NUEVAMENTE',
           type: 'error',
-          onClose: () => {
-            resetEntryUI();
-            if (originatedFromQr) startScanner();
-          },
-          cancelText: originatedFromQr ? 'Cancelar' : null,
-          onCancel: originatedFromQr ? (() => {
-            resetEntryUI();
-            startScanner();
-          }) : null
+          onClose: resetEntryUI
         });
       }
     };
@@ -3916,10 +4104,12 @@
     if (sendPeriodButton) sendPeriodButton.addEventListener('click', sendSelectedPeriodReport);
     resetStudentButton.addEventListener('click', openResetStudentModal);
     registerButton.addEventListener('click', registerCurrentRut);
-    clearButton.addEventListener('click', resetEntryUI);
+    manualEntryButton.addEventListener('click', openManualEntryModal);
     scanButton.addEventListener('click', startScanner);
-    scanCloseButton.addEventListener('click', () => { stopScanner(); });
-    if (pasteRutButton) pasteRutButton.addEventListener('click', pasteRutFromClipboard);
+    manualEntryCancel.addEventListener('click', closeManualEntryModal);
+    manualEntrySubmit.addEventListener('click', submitManualEntry);
+    manualPhotoInput.addEventListener('change', updateManualPhotoPreview);
+    scanCloseButton.addEventListener('click', stopScanner);
 
     resetStudentCancel.addEventListener('click', closeResetStudentModal);
     resetStudentConfirm.addEventListener('click', executeStudentReset);
@@ -3978,6 +4168,10 @@
       if (event.target === feedbackModal) hideModal();
     });
 
+    manualEntryModal.addEventListener('click', (event) => {
+      if (event.target === manualEntryModal) closeManualEntryModal();
+    });
+
     resetStudentModal.addEventListener('click', (event) => {
       if (event.target === resetStudentModal) closeResetStudentModal();
     });
@@ -3990,8 +4184,13 @@
 
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && feedbackModal.classList.contains('show')) hideModal();
+      if (event.key === 'Escape' && manualEntryModal.classList.contains('show')) closeManualEntryModal();
       if (event.key === 'Escape' && scanLoopActive) stopScanner();
       if (event.key === 'Escape' && resetStudentModal.classList.contains('show')) closeResetStudentModal();
+    });
+
+    rutInput.addEventListener('input', () => {
+      rutInput.value = sanitizeRutNumber(rutInput.value);
     });
 
     resetStudentRutInput.addEventListener('input', () => {
@@ -4001,6 +4200,7 @@
 
     window.addEventListener('beforeunload', stopScanner);
     loginForm.addEventListener('submit', handleLogin);
+    loginPasswordToggle?.addEventListener('click', () => togglePasswordField(loginPassword, loginPasswordToggle));
     forgotPasswordToggle.addEventListener('click', showPasswordResetPanel);
     requestResetButton.addEventListener('click', requestPasswordReset);
     closeResetPanelButton.addEventListener('click', hidePasswordResetPanel);
