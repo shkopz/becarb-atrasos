@@ -20,7 +20,6 @@ type SheetStudent = {
 type StudentRow = {
   id: string;
   rut_base: string;
-  activo: boolean | null;
 };
 
 function parseServiceAccount() {
@@ -147,6 +146,7 @@ export async function GET() {
   return NextResponse.json({
     ok: true,
     message: "Usa POST para ejecutar la sincronización de alumnos.",
+    route: "/api/sync-students",
   });
 }
 
@@ -169,7 +169,6 @@ export async function POST(request: NextRequest) {
           processed_unique: 0,
           inserted: 0,
           updated: 0,
-          deactivated: 0,
           counters_created: 0,
         },
       });
@@ -177,12 +176,11 @@ export async function POST(request: NextRequest) {
 
     const studentsFromSheet = dedupeStudentsByRut(rawStudentsFromSheet);
     const rutBases = studentsFromSheet.map((student) => student.rut_base);
-    const rutSet = new Set(rutBases);
     const now = new Date().toISOString();
 
     const { data: existingStudentsBefore, error: existingStudentsBeforeError } = await supabase
       .from("students")
-      .select("id, rut_base, activo")
+      .select("id, rut_base")
       .in("rut_base", rutBases);
 
     if (existingStudentsBeforeError) {
@@ -219,42 +217,6 @@ export async function POST(request: NextRequest) {
 
     const insertedCount = studentsFromSheet.filter((student) => !existingRutSet.has(student.rut_base)).length;
     const updatedCount = studentsFromSheet.length - insertedCount;
-
-    const { data: allStudents, error: allStudentsError } = await supabase
-      .from("students")
-      .select("id, rut_base, activo");
-
-    if (allStudentsError) {
-      return NextResponse.json(
-        { ok: false, message: "Los alumnos se sincronizaron, pero no se pudo revisar quiénes deben quedar inactivos." },
-        { status: 500 }
-      );
-    }
-
-    const studentsToDeactivate = (allStudents || [])
-      .filter((student: StudentRow) => !rutSet.has(student.rut_base) && student.activo !== false)
-      .map((student: StudentRow) => student.id);
-
-    let deactivatedCount = 0;
-
-    if (studentsToDeactivate.length > 0) {
-      const { error: deactivateError } = await supabase
-        .from("students")
-        .update({
-          activo: false,
-          updated_at: now,
-        })
-        .in("id", studentsToDeactivate);
-
-      if (deactivateError) {
-        return NextResponse.json(
-          { ok: false, message: "Los alumnos se sincronizaron, pero falló la desactivación de los ausentes en la planilla." },
-          { status: 500 }
-        );
-      }
-
-      deactivatedCount = studentsToDeactivate.length;
-    }
 
     const studentIds = (syncedStudents || []).map((row) => row.id);
     let countersCreated = 0;
@@ -305,7 +267,6 @@ export async function POST(request: NextRequest) {
         processed_unique: studentsFromSheet.length,
         inserted: insertedCount,
         updated: updatedCount,
-        deactivated: deactivatedCount,
         active_in_sheet: studentsFromSheet.filter((student) => student.activo).length,
         inactive_in_sheet: studentsFromSheet.filter((student) => !student.activo).length,
         counters_created: countersCreated,
