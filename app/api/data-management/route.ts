@@ -6,6 +6,8 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+type LevelKey = "all" | "prebasica" | "basica" | "media";
+
 function normalizeText(value: string) {
   return String(value || "")
     .normalize("NFD")
@@ -50,6 +52,32 @@ function normalizeRole(value: string) {
     .replace(/\p{Diacritic}/gu, "")
     .toLowerCase()
     .trim();
+}
+
+function matchesLevel(course: string, level: LevelKey) {
+  if (level === "all") return true;
+  const normalized = normalizeText(course);
+
+  if (level === "prebasica") {
+    return (
+      normalized.includes("kinder") ||
+      normalized.includes("prek") ||
+      normalized.includes("pre k") ||
+      normalized.includes("pre-bas") ||
+      normalized.includes("pre bas") ||
+      normalized.includes("parv")
+    );
+  }
+
+  if (level === "basica") {
+    return normalized.includes("basico");
+  }
+
+  if (level === "media") {
+    return normalized.includes("medio");
+  }
+
+  return true;
 }
 
 async function validateRequestSession(request: Request) {
@@ -126,6 +154,11 @@ export async function GET(request: Request) {
     const query = String(searchParams.get("q") || "").trim();
     const course = String(searchParams.get("course") || "").trim();
     const month = String(searchParams.get("month") || "").trim();
+    const level = (String(searchParams.get("level") || "all").trim().toLowerCase() || "all") as LevelKey;
+
+    const safeLevel: LevelKey = ["all", "prebasica", "basica", "media"].includes(level)
+      ? level
+      : "all";
 
     const { data: tardyData, error: tardyError } = await supabase
       .from("tardy_records")
@@ -228,7 +261,9 @@ export async function GET(request: Request) {
         !normalizedMonth ||
         normalizeText(record.month_key) === normalizedMonth;
 
-      return matchesQuery && matchesCourse && matchesMonth;
+      const matchesSelectedLevel = matchesLevel(record.curso, safeLevel);
+
+      return matchesQuery && matchesCourse && matchesMonth && matchesSelectedLevel;
     });
 
     const totalRecords = filteredRecords.length;
@@ -304,6 +339,7 @@ export async function GET(request: Request) {
           query,
           course,
           month,
+          level: safeLevel,
           page: safePage,
           page_size: pageSize,
         },

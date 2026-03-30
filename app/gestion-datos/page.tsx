@@ -39,12 +39,15 @@ type PeriodRow = {
   is_current: boolean;
 };
 
+type LevelKey = "all" | "prebasica" | "basica" | "media";
+
 type DataManagementResponse = {
   ok: boolean;
   filters: {
     query: string;
     course: string;
     month: string;
+    level: LevelKey;
     page: number;
     page_size: number;
   };
@@ -81,14 +84,25 @@ type EmailTargetState = {
 const SESSION_CHECK_INTERVAL_MS = 60_000;
 const DATA_REFRESH_INTERVAL_MS = 60_000;
 const AUTO_REFRESH_STORAGE_KEY = "becarb-gestion-datos-auto-refresh";
+const APP_HOME_URL = "https://atrasos.becarb.cl";
+
+const LEVEL_LABELS: Record<LevelKey, string> = {
+  all: "Todos",
+  prebasica: "Prebásica",
+  basica: "Básica",
+  media: "Media",
+};
 
 export default function GestionDatosPage() {
   const [queryInput, setQueryInput] = useState("");
   const [courseInput, setCourseInput] = useState("");
   const [monthInput, setMonthInput] = useState("");
+  const [levelInput, setLevelInput] = useState<LevelKey>("all");
+
   const [query, setQuery] = useState("");
   const [course, setCourse] = useState("");
   const [month, setMonth] = useState("");
+  const [level, setLevel] = useState<LevelKey>("all");
   const [page, setPage] = useState(1);
 
   const [loading, setLoading] = useState(true);
@@ -103,6 +117,7 @@ export default function GestionDatosPage() {
   const [emailTarget, setEmailTarget] = useState<EmailTargetState | null>(null);
   const [emailComment, setEmailComment] = useState("");
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [selectedReportMonth, setSelectedReportMonth] = useState("");
 
   const redirectTimerRef = useRef<number | null>(null);
   const emailTextareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -113,16 +128,35 @@ export default function GestionDatosPage() {
     if (query.trim()) params.set("q", query.trim());
     if (course.trim()) params.set("course", course.trim());
     if (month.trim()) params.set("month", month.trim());
+    if (level !== "all") params.set("level", level);
     return `/api/data-management?${params.toString()}`;
-  }, [page, query, course, month]);
+  }, [page, query, course, month, level]);
 
-  const exportUrl = useMemo(() => {
+  const filteredExportUrl = useMemo(() => {
     const params = new URLSearchParams();
     if (query.trim()) params.set("q", query.trim());
     if (course.trim()) params.set("course", course.trim());
     if (month.trim()) params.set("month", month.trim());
+    if (level !== "all") params.set("level", level);
     return `/api/export-data-management-filtered?${params.toString()}`;
-  }, [query, course, month]);
+  }, [query, course, month, level]);
+
+  const reportExportUrl = useMemo(() => {
+    if (!selectedReportMonth) return "";
+    const params = new URLSearchParams();
+    params.set("month", selectedReportMonth);
+    return `/api/export-monthly-full?${params.toString()}`;
+  }, [selectedReportMonth]);
+
+  const records = data?.records || [];
+  const allCourses = data?.course_options || [];
+  const periods = data?.periods || [];
+  const totalPages = data?.total_pages || 1;
+  const totalRecords = data?.total_records || 0;
+
+  const levelCourseOptions = useMemo(() => {
+    return allCourses.filter((item) => matchesLevel(item, levelInput));
+  }, [allCourses, levelInput]);
 
   useEffect(() => {
     try {
@@ -166,7 +200,7 @@ export default function GestionDatosPage() {
         setLoading(false);
 
         redirectTimerRef.current = window.setTimeout(() => {
-          window.location.href = "/";
+          window.location.href = APP_HOME_URL;
         }, 1800);
 
         return;
@@ -199,7 +233,7 @@ export default function GestionDatosPage() {
         }
 
         redirectTimerRef.current = window.setTimeout(() => {
-          window.location.href = "/";
+          window.location.href = APP_HOME_URL;
         }, 1800);
       }
     }, SESSION_CHECK_INTERVAL_MS);
@@ -298,7 +332,7 @@ export default function GestionDatosPage() {
             }
 
             redirectTimerRef.current = window.setTimeout(() => {
-              window.location.href = "/";
+              window.location.href = APP_HOME_URL;
             }, 1800);
           }
         }
@@ -313,6 +347,22 @@ export default function GestionDatosPage() {
       cancelled = true;
     };
   }, [fetchUrl, monthInput, sessionReady, refreshKey]);
+
+  useEffect(() => {
+    if (selectedReportMonth) return;
+
+    const previousPeriod = periods.find((item) => !item.is_current);
+    const fallbackPeriod = periods[0];
+
+    if (previousPeriod) {
+      setSelectedReportMonth(previousPeriod.key);
+      return;
+    }
+
+    if (fallbackPeriod) {
+      setSelectedReportMonth(fallbackPeriod.key);
+    }
+  }, [periods, selectedReportMonth]);
 
   useEffect(() => {
     if (!toast) return;
@@ -340,6 +390,14 @@ export default function GestionDatosPage() {
       window.removeEventListener("keydown", handleEscape);
     };
   }, [emailTarget, sendingEmail]);
+
+  useEffect(() => {
+    if (!courseInput) return;
+    if (levelInput === "all") return;
+    if (!matchesLevel(courseInput, levelInput)) {
+      setCourseInput("");
+    }
+  }, [levelInput, courseInput]);
 
   async function copyEmail(email: string) {
     if (!email) {
@@ -383,6 +441,7 @@ export default function GestionDatosPage() {
     setQuery(queryInput.trim());
     setCourse(courseInput.trim());
     setMonth(monthInput.trim());
+    setLevel(levelInput);
   }
 
   function handleClearFilters() {
@@ -390,9 +449,21 @@ export default function GestionDatosPage() {
     setQueryInput("");
     setCourseInput("");
     setMonthInput(current?.key || "");
+    setLevelInput("all");
     setQuery("");
     setCourse("");
     setMonth(current?.key || "");
+    setLevel("all");
+    setPage(1);
+  }
+
+  function handleLevelTabClick(nextLevel: LevelKey) {
+    setLevelInput(nextLevel);
+    setCourseInput((prev) => (prev && !matchesLevel(prev, nextLevel) ? "" : prev));
+    setQuery(queryInput.trim());
+    setCourse((prev) => (prev && !matchesLevel(prev, nextLevel) ? "" : prev));
+    setMonth(monthInput.trim());
+    setLevel(nextLevel);
     setPage(1);
   }
 
@@ -466,12 +537,6 @@ export default function GestionDatosPage() {
     }
   }
 
-  const records = data?.records || [];
-  const courses = data?.course_options || [];
-  const periods = data?.periods || [];
-  const totalPages = data?.total_pages || 1;
-  const totalRecords = data?.total_records || 0;
-
   if (!sessionReady && sessionError) {
     return (
       <main style={mainStyle}>
@@ -494,7 +559,7 @@ export default function GestionDatosPage() {
               Serás redirigido al sistema principal en unos segundos.
             </p>
             <div style={{ marginTop: "18px" }}>
-              <a href="/" style={backLinkStyle}>
+              <a href={APP_HOME_URL} style={backLinkStyle}>
                 ← Volver ahora
               </a>
             </div>
@@ -593,18 +658,34 @@ export default function GestionDatosPage() {
                     maxWidth: "760px",
                   }}
                 >
-                  Revisa los marcajes registrados, filtra por nombre, RUT, curso o mes, y consulta los rankings de atrasos históricos y vigentes.
+                  Revisa los marcajes registrados, filtra por nombre, RUT, nivel, curso o mes, y consulta los rankings de atrasos históricos y vigentes.
                 </p>
               </div>
             </div>
 
-            <a href="/demo-ui/interface-base.html" style={backLinkStyle}>
-             ← Volver
+            <a href={APP_HOME_URL} style={backLinkStyle}>
+              ← Volver al sistema
             </a>
           </div>
         </section>
 
         <section style={cardStyle}>
+          <div style={tabsWrapStyle}>
+            {(Object.keys(LEVEL_LABELS) as LevelKey[]).map((tabKey) => {
+              const active = levelInput === tabKey;
+              return (
+                <button
+                  key={tabKey}
+                  type="button"
+                  onClick={() => handleLevelTabClick(tabKey)}
+                  style={active ? tabActiveStyle : tabStyle}
+                >
+                  {LEVEL_LABELS[tabKey]}
+                </button>
+              );
+            })}
+          </div>
+
           <form
             onSubmit={handleApplyFilters}
             style={{
@@ -612,6 +693,7 @@ export default function GestionDatosPage() {
               gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
               gap: "12px",
               alignItems: "end",
+              marginTop: "16px",
             }}
           >
             <label style={labelStyle}>
@@ -631,8 +713,12 @@ export default function GestionDatosPage() {
                 onChange={(e) => setCourseInput(e.target.value)}
                 style={inputStyle}
               >
-                <option value="">Todos los cursos</option>
-                {courses.map((item) => (
+                <option value="">
+                  {levelInput === "all"
+                    ? "Todos los cursos"
+                    : `Todos los cursos de ${LEVEL_LABELS[levelInput]}`}
+                </option>
+                {levelCourseOptions.map((item) => (
                   <option key={item} value={item}>
                     {item}
                   </option>
@@ -709,21 +795,11 @@ export default function GestionDatosPage() {
               }}
             >
               <a
-                href={exportUrl}
-                style={totalRecords > 0 ? exportButtonStyle : disabledExportButtonStyle}
-                aria-disabled={totalRecords === 0}
-                onClick={(event) => {
-                  if (totalRecords === 0) {
-                    event.preventDefault();
-                  }
-                }}
-                title={
-                  totalRecords > 0
-                    ? "Exportar a Excel todos los registros que coincidan con los filtros actuales"
-                    : "No hay registros filtrados para exportar"
-                }
+                href={filteredExportUrl}
+                style={secondaryActionLinkStyle}
+                title="Exportar a Excel los datos actualmente filtrados"
               >
-                ⬇ Exportar a Excel
+                Exportar filtros a Excel
               </a>
 
               <label style={toggleWrapperStyle}>
@@ -923,6 +999,75 @@ export default function GestionDatosPage() {
             countKey="current_month_count"
             onCopyEmail={copyEmail}
           />
+        </section>
+
+        <section style={cardStyle}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              gap: "16px",
+              flexWrap: "wrap",
+            }}
+          >
+            <div>
+              <h2
+                style={{
+                  margin: 0,
+                  fontSize: "22px",
+                  color: "#1d2430",
+                  fontWeight: 800,
+                }}
+              >
+                Exportar meses anteriores
+              </h2>
+              <p
+                style={{
+                  margin: "8px 0 0",
+                  color: "#5f6570",
+                  fontSize: "14px",
+                  lineHeight: 1.6,
+                  maxWidth: "760px",
+                }}
+              >
+                Selecciona un período para descargar el reporte completo del mes. Esta sección quedó al final de la página, como pediste.
+              </p>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                gap: "12px",
+                flexWrap: "wrap",
+                alignItems: "center",
+              }}
+            >
+              <select
+                value={selectedReportMonth}
+                onChange={(event) => setSelectedReportMonth(event.target.value)}
+                style={{ ...inputStyle, minWidth: "260px" }}
+              >
+                <option value="">Selecciona un período</option>
+                {periods.map((item) => (
+                  <option key={item.key} value={item.key}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+
+              <a
+                href={reportExportUrl || undefined}
+                style={reportExportUrl ? primaryActionLinkStyle : disabledActionLinkStyle}
+                aria-disabled={!reportExportUrl}
+                onClick={(event) => {
+                  if (!reportExportUrl) event.preventDefault();
+                }}
+              >
+                Exportar período completo
+              </a>
+            </div>
+          </div>
         </section>
 
         <footer
@@ -1256,6 +1401,32 @@ function normalizeRole(value: string) {
     .trim();
 }
 
+function matchesLevel(course: string, level: LevelKey) {
+  if (level === "all") return true;
+  const normalized = normalizeRole(course);
+
+  if (level === "prebasica") {
+    return (
+      normalized.includes("kinder") ||
+      normalized.includes("prek") ||
+      normalized.includes("pre k") ||
+      normalized.includes("pre-bas") ||
+      normalized.includes("pre bas") ||
+      normalized.includes("parv")
+    );
+  }
+
+  if (level === "basica") {
+    return normalized.includes("basico");
+  }
+
+  if (level === "media") {
+    return normalized.includes("medio");
+  }
+
+  return true;
+}
+
 function formatDate(value: string) {
   if (!value) return "";
   const [year, month, day] = value.split("-");
@@ -1265,11 +1436,12 @@ function formatDate(value: string) {
 
 function formatDisplayName(value: string) {
   if (!value) return "";
-  return value
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .trim()
-    .replace(/\b\p{L}/gu, (char) => char.toUpperCase());
+  const cleaned = value.replace(/\s+/g, " ").trim();
+  return cleaned
+    .toLocaleLowerCase("es-CL")
+    .replace(/(^|[\s\-('"“”«»¿¡\/])\p{L}/gu, (match) =>
+      match.toLocaleUpperCase("es-CL")
+    );
 }
 
 function formatRut(value: string) {
@@ -1352,6 +1524,70 @@ const textareaStyle: React.CSSProperties = {
   minHeight: "140px",
 };
 
+const tabsWrapStyle: React.CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "10px",
+};
+
+const tabStyle: React.CSSProperties = {
+  minHeight: "44px",
+  border: "1px solid rgba(29, 116, 183, 0.14)",
+  borderRadius: "999px",
+  padding: "0 16px",
+  background: "#ffffff",
+  color: "#1d74b7",
+  fontSize: "14px",
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+const tabActiveStyle: React.CSSProperties = {
+  ...tabStyle,
+  background: "linear-gradient(135deg, rgba(29,116,183,0.14), rgba(73,182,222,0.22))",
+  border: "1px solid rgba(29, 116, 183, 0.24)",
+  color: "#1d2430",
+  boxShadow: "0 12px 24px rgba(29,116,183,0.12)",
+};
+
+const primaryActionLinkStyle: React.CSSProperties = {
+  minHeight: "48px",
+  border: "none",
+  borderRadius: "14px",
+  padding: "0 18px",
+  background: "#1d74b7",
+  color: "#fff",
+  fontWeight: 800,
+  fontSize: "14px",
+  textDecoration: "none",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  whiteSpace: "nowrap",
+};
+
+const secondaryActionLinkStyle: React.CSSProperties = {
+  minHeight: "48px",
+  border: "1px solid rgba(29, 116, 183, 0.18)",
+  borderRadius: "14px",
+  padding: "0 18px",
+  background: "#fff",
+  color: "#1d74b7",
+  fontWeight: 800,
+  fontSize: "14px",
+  textDecoration: "none",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  whiteSpace: "nowrap",
+};
+
+const disabledActionLinkStyle: React.CSSProperties = {
+  ...primaryActionLinkStyle,
+  opacity: 0.45,
+  pointerEvents: "none",
+};
+
 const primaryButtonStyle: React.CSSProperties = {
   minHeight: "48px",
   border: "none",
@@ -1397,28 +1633,6 @@ const emailButtonStyle: React.CSSProperties = {
 
 const disabledEmailButtonStyle: React.CSSProperties = {
   ...emailButtonStyle,
-  opacity: 0.45,
-  cursor: "default",
-};
-
-const exportButtonStyle: React.CSSProperties = {
-  minHeight: "38px",
-  border: "1px solid rgba(11, 159, 107, 0.20)",
-  borderRadius: "12px",
-  padding: "0 14px",
-  background: "rgba(11, 159, 107, 0.10)",
-  color: "#0b9f6b",
-  fontWeight: 800,
-  fontSize: "13px",
-  textDecoration: "none",
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  whiteSpace: "nowrap",
-};
-
-const disabledExportButtonStyle: React.CSSProperties = {
-  ...exportButtonStyle,
   opacity: 0.45,
   cursor: "default",
 };
