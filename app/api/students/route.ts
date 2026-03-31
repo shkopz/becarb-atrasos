@@ -14,27 +14,43 @@ function sortByName(a: any, b: any) {
 
 export async function GET() {
   try {
-    const { data, error } = await supabase
-      .from("students")
-      .select(`
-        rut_base,
-        rut_completo,
-        nombres,
-        apellidos,
-        curso,
-        email,
-        activo
-      `)
-      .eq("activo", true);
+    const pageSize = 1000;
+    let from = 0;
+    let allRows: any[] = [];
 
-    if (error) {
-      return NextResponse.json(
-        { ok: false, message: "No se pudo cargar la nómina desde Supabase." },
-        { status: 500 }
-      );
+    while (true) {
+      const { data, error } = await supabase
+        .from("students")
+        .select(`
+          rut_base,
+          rut_completo,
+          nombres,
+          apellidos,
+          curso,
+          email,
+          activo
+        `)
+        .eq("activo", true)
+        .range(from, from + pageSize - 1);
+
+      if (error) {
+        return NextResponse.json(
+          { ok: false, message: "No se pudo cargar la nómina desde Supabase." },
+          { status: 500 }
+        );
+      }
+
+      const chunk = data || [];
+      allRows = allRows.concat(chunk);
+
+      if (chunk.length < pageSize) {
+        break;
+      }
+
+      from += pageSize;
     }
 
-    const students = (data || [])
+    const students = allRows
       .map((row) => ({
         rut_base: String(row.rut_base || "").replace(/\D/g, ""),
         rut_completo: String(row.rut_completo || ""),
@@ -46,11 +62,19 @@ export async function GET() {
       }))
       .sort(sortByName);
 
-    return NextResponse.json({
-      ok: true,
-      source: "supabase",
-      students,
-    });
+    return NextResponse.json(
+      {
+        ok: true,
+        source: "supabase",
+        total: students.length,
+        students,
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        },
+      }
+    );
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Error desconocido al leer alumnos";
