@@ -81,17 +81,6 @@ type EmailTargetState = {
   email: string;
 };
 
-type ImportResultState = {
-  file_name: string;
-  processed_rows: number;
-  inserted_rows: number;
-  updated_rows: number;
-  unchanged_rows: number;
-  invalid_rows: number;
-  counters_created: number;
-  warnings: string[];
-};
-
 const SESSION_CHECK_INTERVAL_MS = 60_000;
 const DATA_REFRESH_INTERVAL_MS = 60_000;
 const AUTO_REFRESH_STORAGE_KEY = "becarb-gestion-datos-auto-refresh";
@@ -129,13 +118,9 @@ export default function GestionDatosPage() {
   const [emailComment, setEmailComment] = useState("");
   const [sendingEmail, setSendingEmail] = useState(false);
   const [selectedReportMonth, setSelectedReportMonth] = useState("");
-  const [csvFile, setCsvFile] = useState<File | null>(null);
-  const [importingCsv, setImportingCsv] = useState(false);
-  const [importResult, setImportResult] = useState<ImportResultState | null>(null);
 
   const redirectTimerRef = useRef<number | null>(null);
   const emailTextareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const csvInputRef = useRef<HTMLInputElement | null>(null);
 
   const fetchUrl = useMemo(() => {
     const params = new URLSearchParams();
@@ -549,76 +534,6 @@ export default function GestionDatosPage() {
       });
     } finally {
       setSendingEmail(false);
-    }
-  }
-
-  function handleCsvFileChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const nextFile = event.target.files?.[0] || null;
-    setCsvFile(nextFile);
-  }
-
-  async function handleImportStudentsCsv() {
-    if (!csvFile || importingCsv) {
-      setToast({
-        tone: "info",
-        message: "Selecciona un archivo CSV antes de actualizar la base de datos.",
-      });
-      return;
-    }
-
-    try {
-      setImportingCsv(true);
-
-      const formData = new FormData();
-      formData.append("file", csvFile);
-
-      const response = await fetch("/api/import-students-csv", {
-        method: "POST",
-        credentials: "include",
-        cache: "no-store",
-        body: formData,
-      });
-
-      const payload = await response.json().catch(() => ({}));
-
-      if (!response.ok || !payload?.ok) {
-        throw new Error(
-          payload?.message || "No se pudo actualizar la base de datos de estudiantes."
-        );
-      }
-
-      setImportResult({
-        file_name: payload.file_name || csvFile.name,
-        processed_rows: Number(payload.processed_rows || 0),
-        inserted_rows: Number(payload.inserted_rows || 0),
-        updated_rows: Number(payload.updated_rows || 0),
-        unchanged_rows: Number(payload.unchanged_rows || 0),
-        invalid_rows: Number(payload.invalid_rows || 0),
-        counters_created: Number(payload.counters_created || 0),
-        warnings: Array.isArray(payload.warnings) ? payload.warnings : [],
-      });
-
-      setToast({
-        tone: "success",
-        message: "Base de datos actualizada correctamente desde el CSV.",
-      });
-
-      setCsvFile(null);
-      if (csvInputRef.current) {
-        csvInputRef.current.value = "";
-      }
-
-      setRefreshKey((prev) => prev + 1);
-    } catch (err) {
-      setToast({
-        tone: "error",
-        message:
-          err instanceof Error
-            ? err.message
-            : "Ocurrió un error al actualizar la base de datos.",
-      });
-    } finally {
-      setImportingCsv(false);
     }
   }
 
@@ -1086,83 +1001,16 @@ export default function GestionDatosPage() {
           />
         </section>
 
-        <section
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
-            gap: "18px",
-          }}
-        >
-          <section style={cardStyle}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-                gap: "16px",
-                flexWrap: "wrap",
-              }}
-            >
-              <div>
-                <h2
-                  style={{
-                    margin: 0,
-                    fontSize: "22px",
-                    color: "#1d2430",
-                    fontWeight: 800,
-                  }}
-                >
-                  Exportar meses anteriores
-                </h2>
-                <p
-                  style={{
-                    margin: "8px 0 0",
-                    color: "#5f6570",
-                    fontSize: "14px",
-                    lineHeight: 1.6,
-                    maxWidth: "760px",
-                  }}
-                >
-                  Selecciona un período para descargar el reporte completo del mes. Esta sección quedó al final de la página, como pediste.
-                </p>
-              </div>
-
-              <div
-                style={{
-                  display: "flex",
-                  gap: "12px",
-                  flexWrap: "wrap",
-                  alignItems: "center",
-                }}
-              >
-                <select
-                  value={selectedReportMonth}
-                  onChange={(event) => setSelectedReportMonth(event.target.value)}
-                  style={{ ...inputStyle, minWidth: "260px" }}
-                >
-                  <option value="">Selecciona un período</option>
-                  {periods.map((item) => (
-                    <option key={item.key} value={item.key}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
-
-                <a
-                  href={reportExportUrl || undefined}
-                  style={reportExportUrl ? primaryActionLinkStyle : disabledActionLinkStyle}
-                  aria-disabled={!reportExportUrl}
-                  onClick={(event) => {
-                    if (!reportExportUrl) event.preventDefault();
-                  }}
-                >
-                  Exportar período completo
-                </a>
-              </div>
-            </div>
-          </section>
-
-          <section style={cardStyle}>
+        <section style={cardStyle}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              gap: "16px",
+              flexWrap: "wrap",
+            }}
+          >
             <div>
               <h2
                 style={{
@@ -1172,7 +1020,7 @@ export default function GestionDatosPage() {
                   fontWeight: 800,
                 }}
               >
-                Actualizar base de datos
+                Exportar meses anteriores
               </h2>
               <p
                 style={{
@@ -1183,92 +1031,43 @@ export default function GestionDatosPage() {
                   maxWidth: "760px",
                 }}
               >
-                Sube un archivo CSV para sincronizar la tabla <strong>students</strong> usando <strong>rut_base</strong> como llave. Se actualizan datos de ficha, se crean alumnos nuevos y no se modifican los contadores de atrasos históricos ni vigentes.
+                Selecciona un período para descargar el reporte completo del mes. Esta sección quedó al final de la página, como pediste.
               </p>
             </div>
 
             <div
               style={{
-                marginTop: "16px",
-                display: "grid",
+                display: "flex",
                 gap: "12px",
+                flexWrap: "wrap",
+                alignItems: "center",
               }}
             >
-              <label style={labelStyle}>
-                Archivo CSV
-                <input
-                  ref={csvInputRef}
-                  type="file"
-                  accept=".csv,text/csv"
-                  onChange={handleCsvFileChange}
-                  style={{ ...inputStyle, padding: "10px 14px", minHeight: "54px" }}
-                />
-              </label>
+              <select
+                value={selectedReportMonth}
+                onChange={(event) => setSelectedReportMonth(event.target.value)}
+                style={{ ...inputStyle, minWidth: "260px" }}
+              >
+                <option value="">Selecciona un período</option>
+                {periods.map((item) => (
+                  <option key={item.key} value={item.key}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
 
-              <div
-                style={{
-                  fontSize: "13px",
-                  color: "#5f6570",
-                  lineHeight: 1.6,
+              <a
+                href={reportExportUrl || undefined}
+                style={reportExportUrl ? primaryActionLinkStyle : disabledActionLinkStyle}
+                aria-disabled={!reportExportUrl}
+                onClick={(event) => {
+                  if (!reportExportUrl) event.preventDefault();
                 }}
               >
-                Archivo seleccionado: <strong>{csvFile?.name || "Ninguno"}</strong>
-              </div>
-
-              <div
-                style={{
-                  display: "flex",
-                  gap: "12px",
-                  flexWrap: "wrap",
-                  alignItems: "center",
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={handleImportStudentsCsv}
-                  style={primaryButtonStyle}
-                  disabled={importingCsv}
-                >
-                  {importingCsv ? "Actualizando..." : "Actualizar desde CSV"}
-                </button>
-              </div>
-
-              {importResult ? (
-                <div style={summaryCardStyle}>
-                  <div style={summaryGridStyle}>
-                    <SummaryMetric label="Filas procesadas" value={importResult.processed_rows} />
-                    <SummaryMetric label="Nuevos alumnos" value={importResult.inserted_rows} />
-                    <SummaryMetric label="Datos actualizados" value={importResult.updated_rows} />
-                    <SummaryMetric label="Sin cambios" value={importResult.unchanged_rows} />
-                    <SummaryMetric label="Filas inválidas" value={importResult.invalid_rows} />
-                    <SummaryMetric label="Contadores creados" value={importResult.counters_created} />
-                  </div>
-
-                  <div
-                    style={{
-                      marginTop: "12px",
-                      fontSize: "13px",
-                      color: "#5f6570",
-                      lineHeight: 1.6,
-                    }}
-                  >
-                    Último archivo procesado: <strong>{importResult.file_name}</strong>
-                  </div>
-
-                  {importResult.warnings.length ? (
-                    <div style={{ marginTop: "14px", ...infoBoxStyle }}>
-                      <strong>Observaciones:</strong>
-                      <ul style={{ margin: "10px 0 0", paddingLeft: "18px" }}>
-                        {importResult.warnings.slice(0, 8).map((warning, index) => (
-                          <li key={`${warning}-${index}`}>{warning}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
+                Exportar período completo
+              </a>
             </div>
-          </section>
+          </div>
         </section>
 
         <footer
@@ -1490,33 +1289,6 @@ function RankingCard({
         </div>
       )}
     </section>
-  );
-}
-
-function SummaryMetric({
-  label,
-  value,
-}: {
-  label: string;
-  value: number;
-}) {
-  return (
-    <div
-      style={{
-        borderRadius: "16px",
-        padding: "14px 16px",
-        background: "rgba(29, 116, 183, 0.05)",
-        display: "grid",
-        gap: "6px",
-      }}
-    >
-      <span style={{ fontSize: "12px", color: "#5f6570", fontWeight: 800 }}>
-        {label}
-      </span>
-      <span style={{ fontSize: "24px", color: "#1d2430", fontWeight: 800 }}>
-        {value}
-      </span>
-    </div>
   );
 }
 
@@ -1750,20 +1522,6 @@ const textareaStyle: React.CSSProperties = {
   background: "#fff",
   resize: "vertical",
   minHeight: "140px",
-};
-
-const summaryCardStyle: React.CSSProperties = {
-  marginTop: "4px",
-  borderRadius: "18px",
-  padding: "16px",
-  background: "rgba(29, 116, 183, 0.04)",
-  border: "1px solid rgba(29, 116, 183, 0.10)",
-};
-
-const summaryGridStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-  gap: "12px",
 };
 
 const tabsWrapStyle: React.CSSProperties = {
