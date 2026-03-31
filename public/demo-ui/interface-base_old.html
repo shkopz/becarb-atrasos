@@ -1872,7 +1872,7 @@
 
             <div class="qr-wrap">
               <button class="btn btn-primary" id="scanButton">📷 Escanear QR</button>
-              <button class="btn btn-secondary manual-entry-trigger" id="manualEntryButton">Ingreso especial</button>
+              <button class="btn btn-secondary manual-entry-trigger" id="manualEntryButton">Ingreso manual</button>
             </div>
 
             <div class="scan-box" id="scanBox" aria-hidden="true">
@@ -4139,36 +4139,6 @@
       rutInput.value = digits;
       lastEntrySource = 'manual';
       renderStatus(`RUT pegado correctamente: <strong>${digits}</strong>.`, 'success');
-    });
-
-
-    rutInput.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        lastEntrySource = 'manual';
-        registerCurrentRut();
-      }
-    });
-
-    manualRutInput.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        submitManualEntry();
-      }
-    });
-
-    manualTimeInput.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        submitManualEntry();
-      }
-    });
-
-    manualObservationInput.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
-        event.preventDefault();
-        submitManualEntry();
-      }
     });
 
     reportTableBody.addEventListener('click', async (event) => {
