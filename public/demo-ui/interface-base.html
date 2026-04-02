@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Becarb | Control de Atrasos v1.1</title>
+  <title>Becarb | Control de Atrasos Beta</title>
   <style>
     :root {
       --becarb-blue: #49b6de;
@@ -919,56 +919,6 @@
       background: #e9f4fb;
     }
 
-    .mail-copy-btn {
-      width: 38px;
-      height: 38px;
-      border-radius: 12px;
-      border: 1px solid rgba(29,116,183,0.14);
-      background: rgba(29,116,183,0.08);
-      color: var(--becarb-deep);
-      font-size: 16px;
-      font-weight: 800;
-      cursor: pointer;
-      position: relative;
-      display: inline-grid;
-      place-items: center;
-    }
-
-    .mail-copy-btn:disabled {
-      opacity: 0.45;
-      cursor: default;
-    }
-
-    .mail-copy-btn::after {
-      content: attr(data-email);
-      position: absolute;
-      right: calc(100% + 10px);
-      top: 50%;
-      transform: translateY(-50%);
-      padding: 8px 10px;
-      border-radius: 999px;
-      background: rgba(29,36,48,0.94);
-      color: #fff;
-      font-size: 12px;
-      line-height: 1.2;
-      white-space: nowrap;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.16s ease;
-      box-shadow: 0 12px 26px rgba(14,34,60,0.18);
-    }
-
-    .mail-copy-btn:hover::after,
-    .mail-copy-btn:focus-visible::after {
-      opacity: 1;
-    }
-
-    .stat .v.text-value {
-      font-size: 17px;
-      line-height: 1.35;
-      letter-spacing: -0.01em;
-    }
-
     .automation-note {
       margin-top: 12px;
       padding: 14px 16px;
@@ -1798,7 +1748,7 @@
         </div>
         <span class="tag">Acceso al sistema · Versión 1.1</span>
         <h1>Control de atrasos</h1>
-        <p>Ingresa tus credenciales para acceder al sistema de portería y a la gestión institucional de atrasos.</p>
+        <p>Ingresa tus credenciales para acceder al módulo de portería y al informe mensual del beta.</p>
 
         <form class="login-fields" id="loginForm" autocomplete="on">
           <div class="login-field">
@@ -1857,10 +1807,10 @@
           <div class="brand">
             <img src="https://becarb.cl/wp-content/uploads/2019/10/logoweb_becarb_trans.png" alt="Logo Becarb" />
           </div>
-          <span class="tag">Sistema de Control de Atrasos · v1.1</span>
+          <span class="tag">Control de atrasos · Versión 1.1</span>
           <h1>Ingreso rápido por RUT o QR, con hora automática del sistema.</h1>
           <p>
-            Registro rápido por RUT o QR, con hora automática del sistema, control de duplicados diarios, conteo mensual de atrasos y consulta institucional de reportes.
+            Sistema de control de atrasos para portería, con lectura por RUT o QR, cruce con la base de estudiantes, bloqueo de duplicados diarios, conteo mensual y notificación al correo del alumno cuando corresponde.
           </p>
         </div>
       </article>
@@ -1889,9 +1839,17 @@
           <span class="badge-inline" id="monthBadge">Periodo actual</span>
         </div>
 
+        <div class="flow">
+          <span>1. Leer RUT</span>
+          <span>2. Buscar alumno</span>
+          <span>3. Guardar ingreso</span>
+          <span>4. Contar atrasos</span>
+          <span>5. Alertar sobre 3</span>
+        </div>
+
         <div class="entry-wrap">
           <div class="entry-box">
-            <h3>Ingreso manual</h3>
+            <h3>Ingreso de estudiantes</h3>
             <p>Se digita solo la parte numérica del RUT. Sin puntos, sin guion, sin dígito verificador.</p>
 
             <div class="field">
@@ -1985,11 +1943,24 @@
           </div>
         </div>
 
-        <div class="footer-note">
-          Indicadores del día y del período actual para apoyar el seguimiento de atrasos por nivel y curso.
+        <div class="rule-box">
+          <strong>Lógica del sistema</strong>
+          <ul>
+            <li>La hora se obtiene automáticamente del sistema.</li>
+            <li>El cruce se hace con la base demo de estudiantes.</li>
+            <li>Si el alumno ya fue registrado hoy, se bloquea el duplicado.</li>
+            <li>La alerta aparece cuando supera 3 atrasos en el mes.</li>
+            <li>El envío de correo se registra según la configuración activa del sistema.</li>
+            <li>Los reseteos individuales quedan registrados con fecha, hora y usuario.</li>
+            <li>El cierre mensual automático a inspectoría queda registrado en el sistema.</li>
+          </ul>
         </div>
 
         <div class="stats-grid" id="statsGrid"></div>
+
+        <div class="footer-note">
+          La nómina de alumnos y los registros operativos se muestran según la configuración activa del sistema.
+        </div>
       </aside>
     </section>
 
@@ -2009,12 +1980,11 @@
               <th>Alumno</th>
               <th>Curso</th>
               <th>Estado</th>
-              <th>Categoría</th>
-              <th>Registrado por</th>
+              <th>Correo</th>
             </tr>
           </thead>
           <tbody id="todayTableBody">
-            <tr><td colspan="7" class="empty">Todavía no hay marcajes hoy.</td></tr>
+            <tr><td colspan="6" class="empty">Todavía no hay registros hoy.</td></tr>
           </tbody>
         </table>
       </div>
@@ -2030,13 +2000,13 @@
       <div class="panel-header">
         <div>
           <h2 class="panel-title">Informe mensual · alumnos con 3 o más atrasos vigentes</h2>
-          <p class="panel-sub">Exporta el informe en formato Excel y gestiona las notificaciones del período activo. Haz clic en el buzón para copiar el correo al portapapeles.</p>
+          <p class="panel-sub">Exporta el informe en formato Excel y gestiona la notificación del período activo. Haz click en un correo para copiarlo al portapapeles.</p>
         </div>
       </div>
 
       <div class="report-actions">
         <button class="btn btn-secondary" id="exportEmailsButton">Exportar Excel</button>
-        <button class="btn btn-primary" id="simulateSendButton">Enviar notificación a estudiantes</button>
+        <button class="btn btn-primary" id="simulateSendButton">Enviar notificación</button>
       </div>
 
       <div class="status info show" id="reportStatusBox">
@@ -2050,15 +2020,14 @@
               <th>Alumno</th>
               <th>RUT completo</th>
               <th>Curso</th>
-              <th>Teléfono</th>
               <th>Correo</th>
               <th>Vigentes</th>
-              <th>Histórico</th>
+              <th>Histórico mes</th>
               <th>Notificación</th>
             </tr>
           </thead>
           <tbody id="reportTableBody">
-            <tr><td colspan="8" class="empty">Aún no hay alumnos con 3 o más atrasos vigentes en este mes.</td></tr>
+            <tr><td colspan="7" class="empty">Aún no hay alumnos con 3 o más atrasos vigentes en este mes.</td></tr>
           </tbody>
         </table>
       </div>
@@ -2095,7 +2064,7 @@
 
       <div class="utility-actions">
         <button class="btn btn-danger" id="resetStudentButton">Resetear estudiante</button>
-        <a class="btn btn-secondary btn-admin-spotlight" href="https://atrasos.becarb.cl/gestion-datos" id="dataManagementButton">📊 Gestión de Datos</a>
+        <a class="btn btn-secondary btn-admin-spotlight" href="/gestion-datos" id="dataManagementButton">📊 Gestión de Datos</a>
       </div>
 
       <div class="automation-note">
@@ -2122,7 +2091,7 @@
         </table>
       </div>
 
-      <h3 class="subsection-title">Despachos mensuales a inspectoría</h3>
+      <h3 class="subsection-title">Despachos mensuales registrados a inspectoría</h3>
       <div class="status info show" id="automationStatusBox">
         El sistema genera automáticamente un despacho mensual para <strong>inspectoria@becarb.cl</strong> cuando detecta un cierre de mes pendiente.
       </div>
@@ -2189,7 +2158,7 @@
     <div class="modal-card manual-entry-card" role="dialog" aria-modal="true" aria-labelledby="manualEntryTitle">
       <div class="modal-head">
         <div class="modal-kicker info">Ingreso manual</div>
-        <h2 class="modal-title" id="manualEntryTitle">Registrar ingreso manual</h2>
+        <h2 class="modal-title" id="manualEntryTitle">Registrar ingreso especial</h2>
         <p class="modal-copy">Ingresa el RUT, ajusta la hora del ingreso, agrega una observación si corresponde y adjunta un respaldo fotográfico solo si lo necesitas. El sistema enviará correo al estudiante y copia a inspectoría.</p>
       </div>
 
@@ -2227,7 +2196,7 @@
 
       <div class="manual-actions">
         <button class="btn btn-ghost" type="button" id="manualEntryCancel">Cancelar</button>
-        <button class="btn btn-primary" type="button" id="manualEntrySubmit">Registrar ingreso manual</button>
+        <button class="btn btn-primary" type="button" id="manualEntrySubmit">Registrar ingreso especial</button>
       </div>
     </div>
   </div>
@@ -2384,7 +2353,9 @@
         const [base] = raw.split('-');
         return String(base || '').replace(/\D/g, '').slice(0, 9);
       }
-      return raw.replace(/\D/g, '').slice(0, 9);
+      const digitsOnly = raw.replace(/\D/g, '');
+      if (digitsOnly.length === 9) return digitsOnly.slice(0, 8);
+      return digitsOnly.slice(0, 9);
     };
 
     const scrollViewportTop = () => {
@@ -2448,6 +2419,27 @@
     const formatHourMinute = (date) => date.toLocaleTimeString('es-CL', {
       hour: '2-digit', minute: '2-digit'
     });
+
+
+    const fixMojibake = (value) => {
+      let text = String(value ?? '');
+      if (!text) return '';
+      const suspicious = /Ã.|Â|Ð|¤|�/u.test(text);
+      if (suspicious) {
+        try {
+          const bytes = Uint8Array.from(Array.from(text, (ch) => ch.charCodeAt(0) & 0xff));
+          const decoded = new TextDecoder('utf-8').decode(bytes);
+          if (decoded && decoded !== text && !decoded.includes('�')) {
+            text = decoded;
+          }
+        } catch {
+          // ignore
+        }
+      }
+      return text.normalize('NFC');
+    };
+
+    const displayText = (value) => fixMojibake(value).replace(/\s+/g, ' ').trim();
 
     const normalizeState = (state) => ({
       records: Array.isArray(state.records) ? state.records : [],
@@ -2556,10 +2548,10 @@
       id: index + 1,
       rutFull: student.rut_completo || '',
       rutNumber: sanitizeRutNumber(student.rut_base || ''),
-      nombres: student.nombres || '',
-      apellidos: student.apellidos || '',
-      curso: student.curso || '',
-      email: student.email || '',
+      nombres: fixMojibake(student.nombres || ''),
+      apellidos: fixMojibake(student.apellidos || ''),
+      curso: fixMojibake(student.curso || ''),
+      email: fixMojibake(student.email || ''),
       active: Boolean(student.activo)
     });
 
@@ -2689,8 +2681,8 @@
         studentCard.classList.remove('show');
       } else {
         heroTitle.textContent = 'Ingreso rápido por RUT o QR, con hora automática del sistema.';
-        heroParagraph.textContent = 'Registro rápido por RUT o QR, con hora automática del sistema, control de duplicados diarios y consulta institucional de reportes.';
-        if (heroTag) heroTag.textContent = 'Sistema de Control de Atrasos · v1.1';
+        heroParagraph.textContent = 'Sistema de control de atrasos con lectura por RUT o QR, validación de estudiantes, bloqueo de duplicados diarios y gestión del informe mensual.';
+        if (heroTag) heroTag.textContent = 'Control de atrasos · Versión 1.1';
       }
     };
 
@@ -2850,7 +2842,7 @@
       manualPhotoPreview.hidden = true;
       manualPhotoPreviewImg.removeAttribute('src');
       manualEntrySubmit.disabled = false;
-      manualEntrySubmit.textContent = 'Registrar ingreso manual';
+      manualEntrySubmit.textContent = 'Registrar ingreso especial';
       manualEntryModal.classList.add('show');
       manualEntryModal.setAttribute('aria-hidden', 'false');
       window.setTimeout(() => manualRutInput.focus(), 40);
@@ -2885,19 +2877,27 @@
       reader.readAsDataURL(file);
     };
 
-        const submitManualEntry = async () => {
+    const submitManualEntry = async () => {
       const rutValue = sanitizeRutNumber(manualRutInput.value);
-      const requestedTime = String(manualTimeInput.value || '').slice(0, 5);
-      const manualTime = /^\d{2}:\d{2}$/.test(requestedTime) ? requestedTime : getCurrentChileHhmm();
+      const manualTime = String(manualTimeInput.value || '').slice(0, 5);
       const observation = (manualObservationInput.value || '').trim();
       manualRutInput.value = rutValue;
-      manualTimeInput.value = manualTime;
 
       if (!rutValue) {
         showModal({
           title: 'INGRESA UN RUT',
           message: 'Debes ingresar un RUT válido para registrar el ingreso manual.',
-          buttonText: 'Cerrar',
+          buttonText: 'VOLVER',
+          type: 'error'
+        });
+        return;
+      }
+
+      if (!/^\d{2}:\d{2}$/.test(manualTime)) {
+        showModal({
+          title: 'HORA INVÁLIDA',
+          message: 'Debes indicar una hora válida para el ingreso manual.',
+          buttonText: 'VOLVER',
           type: 'error'
         });
         return;
@@ -2912,7 +2912,6 @@
         formData.append('hora_ingreso', manualTime);
         formData.append('observacion', observation);
         formData.append('created_by', currentUser() || 'desconocido');
-
         const evidenceFile = manualPhotoInput.files && manualPhotoInput.files[0] ? manualPhotoInput.files[0] : null;
         if (evidenceFile) {
           formData.append('evidencia', evidenceFile);
@@ -2923,18 +2922,14 @@
           body: formData
         });
 
-        const result = await response.json().catch(() => ({}));
+        const result = await response.json();
 
         if (!response.ok || !result.ok) {
           throw new Error(result.message || 'No se pudo registrar el ingreso manual.');
         }
 
+        closeManualEntryModal();
         const studentName = `${result.student.nombres} ${result.student.apellidos}`.trim();
-        const recordTime = String(result.tardy.hora || `${manualTime}:00`).slice(0, 5);
-        const observationMessage = result.manual_entry?.observacion
-          ? result.manual_entry.observacion
-          : 'Sin observación adicional.';
-
         const record = {
           studentId: result.student.id,
           nombre: studentName,
@@ -2949,48 +2944,33 @@
           dateKey: result.tardy.fecha,
           monthKey: getMonthKeyFromDate(new Date(`${result.tardy.fecha}T${result.tardy.hora}`)),
           dateLabel: formatDateLong(new Date(`${result.tardy.fecha}T${result.tardy.hora}`)),
-          time: recordTime,
+          time: String(result.tardy.hora || manualTime).slice(0, 5),
           createdAt: new Date().toISOString()
         };
-
         renderStudentCard(record, result.tardy.current_month_count, result.tardy.total_historic_count);
         await refreshAll();
         resetEntryUI();
-        closeManualEntryModal();
-
         showModal({
           title: 'INGRESO MANUAL REGISTRADO',
-          message:
-            `Se registró un ingreso manual para <strong>${studentName}</strong> a las <strong>${recordTime}</strong>.` +
-            `<br><br><strong>Observación:</strong> ${observationMessage}` +
-            `<br><br>Se envió correo al estudiante y copia a <strong>${INSPECTORIA_EMAIL}</strong>.`,
-          buttonText: 'Cerrar',
+          message: `Se registró un ingreso manual para <strong>${studentName}</strong> a las <strong>${record.time}</strong>. ${observation ? `<br><br><strong>Observación:</strong> ${observation}` : ''}<br><br>Se envió correo al estudiante y copia a <strong>${INSPECTORIA_EMAIL}</strong>.`,
+          buttonText: 'ACEPTAR',
           type: getLateVisualState(result.tardy.current_month_count, 'atraso'),
           details: {
             student: studentName,
             course: result.student.curso,
-            time: recordTime
-          },
-          onClose: () => {
-            manualRutInput.value = '';
-            manualTimeInput.value = getCurrentChileHhmm();
-            manualObservationInput.value = '';
-            manualPhotoInput.value = '';
-            manualPhotoName.textContent = 'Sin archivo adjunto.';
-            manualPhotoPreview.hidden = true;
-            manualPhotoPreviewImg.removeAttribute('src');
+            time: record.time
           }
         });
       } catch (error) {
         showModal({
           title: 'NO SE PUDO REGISTRAR',
           message: error instanceof Error ? error.message : 'Ocurrió un error al registrar el ingreso manual.',
-          buttonText: 'Cerrar',
+          buttonText: 'VOLVER',
           type: 'error'
         });
       } finally {
         manualEntrySubmit.disabled = false;
-        manualEntrySubmit.textContent = 'Registrar ingreso manual';
+        manualEntrySubmit.textContent = 'Registrar ingreso especial';
       }
     };
 
@@ -3092,9 +3072,9 @@
       const historical = document.getElementById('studentStatus');
       const visualState = getLateVisualState(operationalCount, record.estado);
 
-      name.textContent = record.nombre;
-      meta.textContent = `${record.curso} · RUT completo ${record.rutFull}`;
-      email.textContent = record.email;
+      name.textContent = displayText(record.nombre);
+      meta.textContent = `${displayText(record.curso)} · RUT completo ${record.rutFull}`;
+      email.textContent = displayText(record.email);
       time.textContent = record.time;
       lateCount.textContent = String(operationalCount);
       historical.textContent = String(historicalCount);
@@ -3134,34 +3114,22 @@
     };
 
     const renderStats = () => {
-      const buildStatsMarkup = (stats) =>
-        stats.map(([label, value]) => {
-          const isText = typeof value === 'string';
-          return `
-          <div class="stat">
-            <div class="k">${label}</div>
-            <div class="v ${isText ? 'text-value' : ''}">${value}</div>
-          </div>
-        `;
-        }).join('');
-
       if (dashboardSummary) {
-        const topOverall = dashboardSummary.top_course_overall || {};
-        const topBasica = dashboardSummary.top_course_basica || {};
-        const topMedia = dashboardSummary.top_course_media || {};
-        const topPrebasica = dashboardSummary.top_course_prebasica || {};
-
         const stats = [
           ['Ingresos hoy', dashboardSummary.ingresos_hoy ?? 0],
           ['Atrasos del mes', dashboardSummary.atrasos_mes ?? 0],
-          ['Alumnos con 3 o más', dashboardSummary.alumnos_sobre_3 ?? 0],
-          ['+ atrasos básica', topBasica.count ? `${topBasica.course} · ${topBasica.count}` : 'Sin datos'],
-          ['+ atrasos media', topMedia.count ? `${topMedia.course} · ${topMedia.count}` : 'Sin datos'],
-          ['+ atrasos prebásica', topPrebasica.count ? `${topPrebasica.course} · ${topPrebasica.count}` : 'Sin datos'],
-          ['Curso más atrasado hoy', topOverall.count ? `${topOverall.course} · ${topOverall.count}` : 'Sin datos']
+          ['Categoría A', dashboardSummary.categoria_a ?? 0],
+          ['Categoría B', dashboardSummary.categoria_b ?? 0],
+          ['Categoría C', dashboardSummary.categoria_c ?? 0],
+          ['Alumnos con 3 o más', dashboardSummary.alumnos_sobre_3 ?? 0]
         ];
 
-        statsGrid.innerHTML = buildStatsMarkup(stats);
+        statsGrid.innerHTML = stats.map(([label, value]) => `
+          <div class="stat">
+            <div class="k">${label}</div>
+            <div class="v">${value}</div>
+          </div>
+        `).join('');
         return;
       }
 
@@ -3169,57 +3137,56 @@
       const monthKey = getMonthKeyFromDate(new Date());
       const today = getTodayRecords(state);
       const historicalMonthlyLates = getLateRecordsForMonth(state, monthKey);
+      const operationalMonthlyLates = getOperationalLateRecordsForMonth(state, monthKey);
+      const a = operationalMonthlyLates.filter((record) => record.categoria === 'A').length;
+      const b = operationalMonthlyLates.filter((record) => record.categoria === 'B').length;
+      const c = operationalMonthlyLates.filter((record) => record.categoria === 'C').length;
       const alertCount = getMonthlyReport(state, monthKey).length;
-
-      const courseCounter = (levelMatcher) => {
-        const map = new Map();
-        today.forEach((record) => {
-          if (!record.curso || !levelMatcher(record.curso)) return;
-          map.set(record.curso, (map.get(record.curso) || 0) + 1);
-        });
-        const first = [...map.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'es'))[0];
-        return first ? `${first[0]} · ${first[1]}` : 'Sin datos';
-      };
-
-      const overallMap = new Map();
-      today.forEach((record) => {
-        if (!record.curso) return;
-        overallMap.set(record.curso, (overallMap.get(record.curso) || 0) + 1);
-      });
-      const overallFirst = [...overallMap.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'es'))[0];
+      const resetCount = state.resetLog.filter((entry) => entry.monthKey === monthKey).length;
 
       const stats = [
         ['Ingresos hoy', today.length],
-        ['Atrasos del mes', historicalMonthlyLates.length],
-        ['Alumnos con 3 o más', alertCount],
-        ['+ atrasos básica', courseCounter((course) => normalizeRole(course).includes('basico'))],
-        ['+ atrasos media', courseCounter((course) => normalizeRole(course).includes('medio'))],
-        ['+ atrasos prebásica', courseCounter((course) => normalizeRole(course).includes('kinder') || normalizeRole(course).includes('prek') || normalizeRole(course).includes('parv'))],
-        ['Curso más atrasado hoy', overallFirst ? `${overallFirst[0]} · ${overallFirst[1]}` : 'Sin datos']
+        ['Atrasos vigentes', operationalMonthlyLates.length],
+        ['Históricos del mes', historicalMonthlyLates.length],
+        ['Categoría A', a],
+        ['Categoría B', b],
+        ['Categoría C', c],
+        ['Alumnos con 3+', alertCount],
+        ['Reseteos del mes', resetCount]
       ];
 
-      statsGrid.innerHTML = buildStatsMarkup(stats);
+      statsGrid.innerHTML = stats.map(([label, value]) => `
+        <div class="stat">
+          <div class="k">${label}</div>
+          <div class="v">${value}</div>
+        </div>
+      `).join('');
     };
 
     const renderTodayTable = () => {
       if (dashboardRecentAccesses.length) {
-        todayTableBody.innerHTML = dashboardRecentAccesses.slice(0, 10).map((record) => `
+        todayTableBody.innerHTML = dashboardRecentAccesses.slice(0, 10).map((record) => {
+          const studentName = displayText(record.nombre);
+          const courseName = displayText(record.curso);
+          const emailValue = displayText(record.email || '');
+          const statusLabel = record.categoria ? 'Atraso' : 'Ingreso';
+          return `
           <tr>
             <td>${record.hora}</td>
             <td>${record.rut_completo || record.rut_base}</td>
-            <td>${record.nombre}</td>
-            <td>${record.curso}</td>
-            <td><span class="pill ${record.categoria === 'C' ? 'alert' : 'warning'}">Atraso ${record.categoria}</span></td>
-            <td>${record.categoria || '—'}</td>
-            <td>${record.created_by || '—'}</td>
+            <td>${studentName}</td>
+            <td>${courseName}</td>
+            <td><span class="pill ${record.categoria === 'C' ? 'alert' : 'warning'}">${statusLabel}</span></td>
+            <td>${emailValue || (record.created_by || '—')}</td>
           </tr>
-        `).join('');
+        `;
+        }).join('');
         return;
       }
 
       const rows = getTodayRecords(loadState());
       if (!rows.length) {
-        todayTableBody.innerHTML = '<tr><td colspan="7" class="empty">Todavía no hay marcajes hoy.</td></tr>';
+        todayTableBody.innerHTML = '<tr><td colspan="6" class="empty">Todavía no hay registros hoy.</td></tr>';
         return;
       }
 
@@ -3227,11 +3194,10 @@
         <tr>
           <td>${record.time}</td>
           <td>${record.rutFull}</td>
-          <td>${record.nombre}</td>
-          <td>${record.curso}</td>
-          <td>${record.estado === 'normal' ? '<span class="pill normal">Normal</span>' : '<span class="pill ' + record.pillClass + '">' + record.label + '</span>'}</td>
-          <td>${record.categoria || '—'}</td>
-          <td>${record.email}</td>
+          <td>${displayText(record.nombre)}</td>
+          <td>${displayText(record.curso)}</td>
+          <td>${record.estado === 'normal' ? '<span class="pill normal">Ingreso</span>' : '<span class="pill ' + record.pillClass + '">Atraso</span>'}</td>
+          <td>${displayText(record.email)}</td>
         </tr>
       `).join('');
     };
@@ -3244,7 +3210,7 @@
         .sort((a, b) => (b.current_month_count || 0) - (a.current_month_count || 0) || `${a.nombres || ''} ${a.apellidos || ''}`.localeCompare(`${b.nombres || ''} ${b.apellidos || ''}`));
 
       if (!report.length) {
-        reportTableBody.innerHTML = '<tr><td colspan="8" class="empty">Aún no hay alumnos con 3 o más atrasos vigentes en este mes.</td></tr>';
+        reportTableBody.innerHTML = '<tr><td colspan="7" class="empty">Aún no hay alumnos con 3 o más atrasos vigentes en este mes.</td></tr>';
         reportStatusBox.className = 'status info show';
         reportStatusBox.innerHTML = 'El informe toma el mes actual del sistema y reúne a los alumnos que acumulan 3 o más atrasos vigentes.';
         return;
@@ -3252,22 +3218,22 @@
 
       reportTableBody.innerHTML = report.map((item) => {
         const sent = notifications.find((entry) => entry.rut_base === item.rut_base && entry.monthKey === monthKey) || null;
-        const fullName = `${item.nombres || ''} ${item.apellidos || ''}`.trim();
-        const email = item.email || '';
+        const fullName = displayText(`${item.nombres || ''} ${item.apellidos || ''}`.trim());
+        const courseName = displayText(item.curso || '');
+        const email = displayText(item.email || '');
         const emailButton = email
-          ? `<button class="mail-copy-btn" type="button" data-email="${escapeHtml(email)}" title="${escapeHtml(email)}">✉</button>`
-          : '<button class="mail-copy-btn" type="button" disabled data-email="Sin correo registrado">✉</button>';
+          ? `<button class="table-action email-copy" type="button" data-email="${email}" title="Copiar correo">${email}</button>`
+          : '—';
 
         return `
         <tr>
           <td>${fullName}</td>
           <td>${item.rut_completo || ''}</td>
-          <td>${item.curso || ''}</td>
-          <td>${item.telefon || '—'}</td>
+          <td>${courseName}</td>
           <td>${emailButton}</td>
           <td><span class="pill alert">${item.current_month_count || 0}</span></td>
           <td>${item.total_historic_count || 0}</td>
-          <td>${sent ? 'Actualizada ' + formatDateTimeShort(sent.sentAt) : 'Pendiente'}</td>
+          <td>${sent ? 'Enviado ' + formatDateTimeShort(sent.sentAt) : 'Pendiente'}</td>
         </tr>`;
       }).join('');
 
@@ -3288,8 +3254,8 @@
           <td>${formatDateShort(entry.reset_at)}</td>
           <td>${new Date(entry.reset_at).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</td>
           <td>${entry.reset_by || ''}</td>
-          <td>${entry.nombre_completo || ''}</td>
-          <td>${entry.curso || ''}</td>
+          <td>${displayText(entry.nombre_completo || '')}</td>
+          <td>${displayText(entry.curso || '')}</td>
           <td>${entry.previous_counter ?? 0}</td>
           <td>0</td>
         </tr>
@@ -3477,7 +3443,6 @@
         const response = await fetch('/api/request-password-reset', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
           body: JSON.stringify({ email })
         });
 
@@ -3513,7 +3478,6 @@
         const response = await fetch('/api/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
           body: JSON.stringify({ username: user, password: pass })
         });
 
@@ -3548,7 +3512,7 @@
 
     const logout = async () => {
       try {
-        await fetch('/api/session', { method: 'DELETE', credentials: 'include' });
+        await fetch('/api/session', { method: 'DELETE' });
       } catch {
         // aunque falle, seguimos cerrando sesión local
       }
@@ -3564,7 +3528,7 @@
 
     const restoreAccess = async () => {
       try {
-        const response = await fetch('/api/session', { method: 'GET', credentials: 'include', cache: 'no-store' });
+        const response = await fetch('/api/session', { method: 'GET' });
 
         if (!response.ok) {
           showLoginScreen();
@@ -3727,7 +3691,7 @@
       }
 
       sampleList.innerHTML = students.slice(0, 12).map((student) => `
-        <button class="chip" data-rut="${student.rutNumber}">${student.rutNumber} · ${student.nombres}</button>
+        <button class="chip" data-rut="${student.rutNumber}">${student.rutNumber} · ${displayText(student.nombres)}</button>
       `).join('');
     };
 
@@ -3964,7 +3928,7 @@
 
       if (!report.length) {
         reportStatusBox.className = 'status info show';
-        reportStatusBox.innerHTML = 'No hay alumnos desde 3 atrasos vigentes para notificar en este momento.';
+        reportStatusBox.innerHTML = 'No hay alumnos desde 3 atrasos vigentes, así que no hay notificación que registrar.';
         return;
       }
 
@@ -3980,7 +3944,7 @@
       saveState({ ...state, notifications });
       renderReport();
       reportStatusBox.className = 'status show success';
-      reportStatusBox.innerHTML = `Se actualizó el estado de notificación para <strong>${report.length}</strong> alumno(s).`;
+      reportStatusBox.innerHTML = `Se registró el envío de notificación para <strong>${report.length}</strong> alumno(s).`;
     };
 
     const buildMonthlyFullReportAttachment = (state, monthKey) => {
@@ -4027,7 +3991,7 @@
 
       saveState({ ...state, autoReports });
       automationStatusBox.className = 'status show success';
-      automationStatusBox.innerHTML = `Se generó automáticamente el despacho del período <strong>${monthLabelFromKey(targetMonthKey)}</strong> para inspectoría.`;
+      automationStatusBox.innerHTML = `Se generó automáticamente el despacho registrado del período <strong>${monthLabelFromKey(targetMonthKey)}</strong> para inspectoría.`;
     };
 
     const downloadAutoReportAttachment = (monthKey) => {
@@ -4192,36 +4156,6 @@
       rutInput.value = digits;
       lastEntrySource = 'manual';
       renderStatus(`RUT pegado correctamente: <strong>${digits}</strong>.`, 'success');
-    });
-
-
-    rutInput.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        lastEntrySource = 'manual';
-        registerCurrentRut();
-      }
-    });
-
-    manualRutInput.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        submitManualEntry();
-      }
-    });
-
-    manualTimeInput.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        submitManualEntry();
-      }
-    });
-
-    manualObservationInput.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
-        event.preventDefault();
-        submitManualEntry();
-      }
     });
 
     reportTableBody.addEventListener('click', async (event) => {
