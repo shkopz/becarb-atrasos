@@ -16,6 +16,7 @@ type RecordRow = {
   nombre_completo: string;
   curso: string;
   email: string;
+  telefon: string;
   month_key: string;
 };
 
@@ -27,6 +28,7 @@ type RankingRow = {
   nombre_completo: string;
   curso: string;
   email: string;
+  telefon: string;
   current_month_count: number;
   total_historic_count: number;
 };
@@ -39,12 +41,15 @@ type PeriodRow = {
   is_current: boolean;
 };
 
+type LevelKey = "all" | "prebasica" | "basica" | "media";
+
 type DataManagementResponse = {
   ok: boolean;
   filters: {
     query: string;
-    courses: string[];
+    course: string;
     month: string;
+    level: LevelKey;
     page: number;
     page_size: number;
   };
@@ -53,10 +58,12 @@ type DataManagementResponse = {
   course_options: string[];
   periods: PeriodRow[];
   records: RecordRow[];
-  rankings: {
+  rankings?: {
     historical: RankingRow[];
     current: RankingRow[];
   };
+  ranking?: RankingRow[];
+  ranking_limit?: number;
   message?: string;
 };
 
@@ -78,18 +85,40 @@ type EmailTargetState = {
   email: string;
 };
 
+type ImportResultState = {
+  file_name: string;
+  processed_rows: number;
+  inserted_rows: number;
+  updated_rows: number;
+  unchanged_rows: number;
+  invalid_rows: number;
+  counters_created: number;
+  warnings: string[];
+};
+
 const SESSION_CHECK_INTERVAL_MS = 60_000;
 const DATA_REFRESH_INTERVAL_MS = 60_000;
 const AUTO_REFRESH_STORAGE_KEY = "becarb-gestion-datos-auto-refresh";
-const APP_HOME_URL = "https://atrasos.becarb.cl";
+const APP_HOME_URL = "/demo-ui/interface-base.html";
+const APP_VERSION = "1.1";
+
+const LEVEL_LABELS: Record<LevelKey, string> = {
+  all: "Todos",
+  prebasica: "Prebásica",
+  basica: "Básica",
+  media: "Media",
+};
 
 export default function GestionDatosPage() {
   const [queryInput, setQueryInput] = useState("");
-  const [selectedCoursesInput, setSelectedCoursesInput] = useState<string[]>([]);
+  const [courseInput, setCourseInput] = useState("");
   const [monthInput, setMonthInput] = useState("");
+  const [levelInput, setLevelInput] = useState<LevelKey>("all");
+
   const [query, setQuery] = useState("");
-  const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
+  const [course, setCourse] = useState("");
   const [month, setMonth] = useState("");
+  const [level, setLevel] = useState<LevelKey>("all");
   const [page, setPage] = useState(1);
 
   const [loading, setLoading] = useState(true);
@@ -105,30 +134,34 @@ export default function GestionDatosPage() {
   const [emailComment, setEmailComment] = useState("");
   const [sendingEmail, setSendingEmail] = useState(false);
   const [selectedReportMonth, setSelectedReportMonth] = useState("");
+  const [rankingLimit, setRankingLimit] = useState(5);
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [importingCsv, setImportingCsv] = useState(false);
+  const [importResult, setImportResult] = useState<ImportResultState | null>(null);
 
   const redirectTimerRef = useRef<number | null>(null);
   const emailTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const csvInputRef = useRef<HTMLInputElement | null>(null);
 
   const fetchUrl = useMemo(() => {
     const params = new URLSearchParams();
     params.set("page", String(page));
     if (query.trim()) params.set("q", query.trim());
-    selectedCourses.forEach((course) => {
-      if (course.trim()) params.append("course", course.trim());
-    });
+    if (course.trim()) params.set("course", course.trim());
     if (month.trim()) params.set("month", month.trim());
+    if (level !== "all") params.set("level", level);
+    params.set("ranking_limit", String(rankingLimit));
     return `/api/data-management?${params.toString()}`;
-  }, [page, query, selectedCourses, month]);
+  }, [page, query, course, month, level, rankingLimit]);
 
   const filteredExportUrl = useMemo(() => {
     const params = new URLSearchParams();
     if (query.trim()) params.set("q", query.trim());
-    selectedCourses.forEach((course) => {
-      if (course.trim()) params.append("course", course.trim());
-    });
+    if (course.trim()) params.set("course", course.trim());
     if (month.trim()) params.set("month", month.trim());
+    if (level !== "all") params.set("level", level);
     return `/api/export-data-management-filtered?${params.toString()}`;
-  }, [query, selectedCourses, month]);
+  }, [query, course, month, level]);
 
   const reportExportUrl = useMemo(() => {
     if (!selectedReportMonth) return "";
@@ -136,6 +169,23 @@ export default function GestionDatosPage() {
     params.set("month", selectedReportMonth);
     return `/api/export-monthly-full?${params.toString()}`;
   }, [selectedReportMonth]);
+
+  const rankingExportUrl = useMemo(() => {
+    const params = new URLSearchParams();
+    params.set("limit", String(rankingLimit));
+    return `/api/export-ranking?${params.toString()}`;
+  }, [rankingLimit]);
+
+  const records = data?.records || [];
+  const rankingRows = data?.ranking || data?.rankings?.current || [];
+  const allCourses = data?.course_options || [];
+  const periods = data?.periods || [];
+  const totalPages = data?.total_pages || 1;
+  const totalRecords = data?.total_records || 0;
+
+  const levelCourseOptions = useMemo(() => {
+    return allCourses.filter((item) => matchesLevel(item, levelInput));
+  }, [allCourses, levelInput]);
 
   useEffect(() => {
     try {
@@ -370,6 +420,14 @@ export default function GestionDatosPage() {
     };
   }, [emailTarget, sendingEmail]);
 
+  useEffect(() => {
+    if (!courseInput) return;
+    if (levelInput === "all") return;
+    if (!matchesLevel(courseInput, levelInput)) {
+      setCourseInput("");
+    }
+  }, [levelInput, courseInput]);
+
   async function copyEmail(email: string) {
     if (!email) {
       setToast({
@@ -410,39 +468,32 @@ export default function GestionDatosPage() {
     event.preventDefault();
     setPage(1);
     setQuery(queryInput.trim());
-    setSelectedCourses([...selectedCoursesInput]);
+    setCourse(courseInput.trim());
     setMonth(monthInput.trim());
+    setLevel(levelInput);
   }
 
   function handleClearFilters() {
     const current = data?.periods?.find((item) => item.is_current);
     setQueryInput("");
-    setSelectedCoursesInput([]);
+    setCourseInput("");
     setMonthInput(current?.key || "");
+    setLevelInput("all");
     setQuery("");
-    setSelectedCourses([]);
+    setCourse("");
     setMonth(current?.key || "");
+    setLevel("all");
     setPage(1);
   }
 
-  function toggleCourseSelection(courseLabel: string) {
-    setSelectedCoursesInput((prev) =>
-      prev.includes(courseLabel)
-        ? prev.filter((item) => item !== courseLabel)
-        : [...prev, courseLabel]
-    );
-  }
-
-  function toggleCourseGroup(courseLabels: string[]) {
-    setSelectedCoursesInput((prev) => {
-      const allSelected = courseLabels.every((item) => prev.includes(item));
-
-      if (allSelected) {
-        return prev.filter((item) => !courseLabels.includes(item));
-      }
-
-      return Array.from(new Set([...prev, ...courseLabels]));
-    });
+  function handleLevelTabClick(nextLevel: LevelKey) {
+    setLevelInput(nextLevel);
+    setCourseInput((prev) => (prev && !matchesLevel(prev, nextLevel) ? "" : prev));
+    setQuery(queryInput.trim());
+    setCourse((prev) => (prev && !matchesLevel(prev, nextLevel) ? "" : prev));
+    setMonth(monthInput.trim());
+    setLevel(nextLevel);
+    setPage(1);
   }
 
   function openEmailModal(record: RecordRow) {
@@ -515,15 +566,75 @@ export default function GestionDatosPage() {
     }
   }
 
-  const records = data?.records || [];
-  const availableCourses = data?.course_options || [];
-  const groupedCourseOptions = useMemo(
-    () => buildCourseGroups(availableCourses),
-    [availableCourses]
-  );
-  const periods = data?.periods || [];
-  const totalPages = data?.total_pages || 1;
-  const totalRecords = data?.total_records || 0;
+  function handleCsvFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const nextFile = event.target.files?.[0] || null;
+    setCsvFile(nextFile);
+  }
+
+  async function handleImportStudentsCsv() {
+    if (!csvFile || importingCsv) {
+      setToast({
+        tone: "info",
+        message: "Selecciona un archivo CSV antes de actualizar la base de datos.",
+      });
+      return;
+    }
+
+    try {
+      setImportingCsv(true);
+
+      const formData = new FormData();
+      formData.append("file", csvFile);
+
+      const response = await fetch("/api/import-students-csv", {
+        method: "POST",
+        credentials: "include",
+        cache: "no-store",
+        body: formData,
+      });
+
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok || !payload?.ok) {
+        throw new Error(
+          payload?.message || "No se pudo actualizar la base de datos de estudiantes."
+        );
+      }
+
+      setImportResult({
+        file_name: payload.file_name || csvFile.name,
+        processed_rows: Number(payload.processed_rows || 0),
+        inserted_rows: Number(payload.inserted_rows || 0),
+        updated_rows: Number(payload.updated_rows || 0),
+        unchanged_rows: Number(payload.unchanged_rows || 0),
+        invalid_rows: Number(payload.invalid_rows || 0),
+        counters_created: Number(payload.counters_created || 0),
+        warnings: Array.isArray(payload.warnings) ? payload.warnings : [],
+      });
+
+      setToast({
+        tone: "success",
+        message: "Base de datos actualizada correctamente desde el CSV.",
+      });
+
+      setCsvFile(null);
+      if (csvInputRef.current) {
+        csvInputRef.current.value = "";
+      }
+
+      setRefreshKey((prev) => prev + 1);
+    } catch (err) {
+      setToast({
+        tone: "error",
+        message:
+          err instanceof Error
+            ? err.message
+            : "Ocurrió un error al actualizar la base de datos.",
+      });
+    } finally {
+      setImportingCsv(false);
+    }
+  }
 
   if (!sessionReady && sessionError) {
     return (
@@ -626,6 +737,9 @@ export default function GestionDatosPage() {
                 >
                   Control y Auditoría
                 </p>
+                <div style={{ marginBottom: "6px", fontSize: "13px", color: "#1d74b7", fontWeight: 800 }}>
+                  Versión 1.1
+                </div>
                 <h1
                   style={{
                     margin: "6px 0 8px",
@@ -646,7 +760,7 @@ export default function GestionDatosPage() {
                     maxWidth: "760px",
                   }}
                 >
-                  Revisa los marcajes registrados, filtra por nombre, RUT, curso o mes, y consulta los rankings de atrasos históricos y vigentes.
+                  Revisa los marcajes registrados, filtra por nombre, RUT, nivel, curso o mes, y consulta los rankings de atrasos históricos y vigentes.
                 </p>
               </div>
             </div>
@@ -658,6 +772,22 @@ export default function GestionDatosPage() {
         </section>
 
         <section style={cardStyle}>
+          <div style={tabsWrapStyle}>
+            {(Object.keys(LEVEL_LABELS) as LevelKey[]).map((tabKey) => {
+              const active = levelInput === tabKey;
+              return (
+                <button
+                  key={tabKey}
+                  type="button"
+                  onClick={() => handleLevelTabClick(tabKey)}
+                  style={active ? tabActiveStyle : tabStyle}
+                >
+                  {LEVEL_LABELS[tabKey]}
+                </button>
+              );
+            })}
+          </div>
+
           <form
             onSubmit={handleApplyFilters}
             style={{
@@ -665,6 +795,7 @@ export default function GestionDatosPage() {
               gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
               gap: "12px",
               alignItems: "end",
+              marginTop: "16px",
             }}
           >
             <label style={labelStyle}>
@@ -679,53 +810,22 @@ export default function GestionDatosPage() {
 
             <label style={labelStyle}>
               Filtrar por curso
-              <details style={multiSelectDetailsStyle}>
-                <summary style={multiSelectSummaryStyle}>
-                  <span>{getSelectedCoursesLabel(selectedCoursesInput, groupedCourseOptions)}</span>
-                  <span style={multiSelectSummaryMetaStyle}>
-                    {selectedCoursesInput.length > 0
-                      ? `${selectedCoursesInput.length} seleccionado(s)`
-                      : "Todos"}
-                  </span>
-                </summary>
-
-                <div style={multiSelectPanelStyle}>
-                  <div style={courseGroupActionsStyle}>
-                    {groupedCourseOptions.map((group) => {
-                      const allSelected =
-                        group.values.length > 0 &&
-                        group.values.every((item) => selectedCoursesInput.includes(item));
-
-                      return (
-                        <button
-                          key={group.key}
-                          type="button"
-                          onClick={() => toggleCourseGroup(group.values)}
-                          style={allSelected ? groupButtonActiveStyle : groupButtonStyle}
-                        >
-                          {group.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <div style={courseChecklistStyle}>
-                    {availableCourses.map((item) => {
-                      const checked = selectedCoursesInput.includes(item);
-                      return (
-                        <label key={item} style={courseCheckboxRowStyle(checked)}>
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggleCourseSelection(item)}
-                          />
-                          <span>{item}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              </details>
+              <select
+                value={courseInput}
+                onChange={(e) => setCourseInput(e.target.value)}
+                style={inputStyle}
+              >
+                <option value="">
+                  {levelInput === "all"
+                    ? "Todos los cursos"
+                    : `Todos los cursos de ${LEVEL_LABELS[levelInput]}`}
+                </option>
+                {levelCourseOptions.map((item) => (
+                  <option key={repairText(item)} value={repairText(item)}>
+                    {repairText(item)}
+                  </option>
+                ))}
+              </select>
             </label>
 
             <label style={labelStyle}>
@@ -874,72 +974,78 @@ export default function GestionDatosPage() {
                   }}
                 >
                   <thead>
-                    <tr>
-                      {[
-                        "Fecha",
-                        "Hora",
-                        "Alumno",
-                        "RUT",
-                        "Curso",
-                        "Categoría",
-                        "Correo",
-                        "Registrado por",
-                      ].map((header) => (
-                        <th key={header} style={thStyle}>
-                          {header}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {records.map((record) => (
-                      <tr key={record.id}>
-                        <td style={tdStyle}>{formatDate(record.fecha)}</td>
-                        <td style={tdStyle}>{record.hora}</td>
-                        <td style={tdStyle}>
-                          <button
-                            type="button"
-                            onClick={() => copyEmail(record.email)}
-                            style={nameButtonStyle}
-                            title={
-                              record.email
-                                ? `Copiar ${record.email}`
-                                : "Sin correo registrado"
-                            }
-                          >
-                            {formatDisplayName(record.nombre_completo)}
-                          </button>
-                        </td>
-                        <td style={tdStyle}>
-                          {formatRut(record.rut_completo || record.rut_base)}
-                        </td>
-                        <td style={tdStyle}>{repairText(record.curso)}</td>
-                        <td style={tdStyle}>
-                          <span style={pillStyle(record.categoria)}>
-                            {record.categoria}
-                          </span>
-                        </td>
-                        <td style={tdStyle}>
-                          <button
-                            type="button"
-                            onClick={() => openEmailModal(record)}
-                            disabled={!record.email}
-                            style={
-                              record.email ? emailButtonStyle : disabledEmailButtonStyle
-                            }
-                            title={
-                              record.email
-                                ? `Enviar correo a ${record.email}`
-                                : "Sin correo registrado"
-                            }
-                          >
-                            {record.email ? "Enviar correo" : "Sin correo"}
-                          </button>
-                        </td>
-                        <td style={tdStyle}>{record.created_by}</td>
-                      </tr>
-                    ))}
-                  </tbody>
+  <tr>
+    {[
+      "Fecha",
+      "Hora",
+      "Alumno",
+      "RUT",
+      "Curso",
+      "Categoría",
+      "Teléfono",
+      "Correo",
+      "Notificar",
+      "Registrado por",
+    ].map((header) => (
+      <th key={header} style={thStyle}>
+        {header}
+      </th>
+    ))}
+  </tr>
+</thead>
+<tbody>
+  {records.map((record) => (
+    <tr key={record.id}>
+      <td style={tdStyle}>{formatDate(record.fecha)}</td>
+      <td style={tdStyle}>{record.hora}</td>
+      <td style={tdStyle}>
+        <span style={{ fontWeight: 800, color: "#1d2430" }}>
+          {formatDisplayName(record.nombre_completo)}
+        </span>
+      </td>
+      <td style={tdStyle}>
+        {formatRut(record.rut_completo || record.rut_base)}
+      </td>
+      <td style={tdStyle}>{repairText(record.curso)}</td>
+      <td style={tdStyle}>
+        <span style={pillStyle(record.categoria)}>
+          {record.categoria}
+        </span>
+      </td>
+      <td style={tdStyle}>{formatPhone(record.telefon)}</td>
+      <td style={tdStyle}>
+        <button
+          type="button"
+          onClick={() => copyEmail(record.email)}
+          disabled={!record.email}
+          style={record.email ? mailIconButtonStyle : disabledMailIconButtonStyle}
+          title={record.email || "Sin correo registrado"}
+          aria-label={record.email ? `Copiar ${record.email}` : "Sin correo registrado"}
+        >
+          ✉
+        </button>
+      </td>
+      <td style={tdStyle}>
+        <button
+          type="button"
+          onClick={() => openEmailModal(record)}
+          disabled={!record.email}
+          style={
+            record.email ? emailButtonStyle : disabledEmailButtonStyle
+          }
+          title={
+            record.email
+              ? `Enviar correo a ${record.email}`
+              : "Sin correo registrado"
+          }
+        >
+          {record.email ? "Notificar" : "Sin correo"}
+        </button>
+      </td>
+      <td style={tdStyle}>{record.created_by}</td>
+    </tr>
+  ))}
+</tbody>
                 </table>
               </div>
 
@@ -979,30 +1085,6 @@ export default function GestionDatosPage() {
           )}
         </section>
 
-        <section
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-            gap: "18px",
-          }}
-        >
-          <RankingCard
-            title="Top 5 · atrasos históricos"
-            subtitle="Estudiantes con más atrasos acumulados en total."
-            items={data?.rankings.historical || []}
-            countKey="total_historic_count"
-            onCopyEmail={copyEmail}
-          />
-
-          <RankingCard
-            title="Top 5 · atrasos vigentes"
-            subtitle="Estudiantes con más atrasos vigentes en el período actual."
-            items={data?.rankings.current || []}
-            countKey="current_month_count"
-            onCopyEmail={copyEmail}
-          />
-        </section>
-
         <section style={cardStyle}>
           <div
             style={{
@@ -1011,6 +1093,7 @@ export default function GestionDatosPage() {
               alignItems: "flex-start",
               gap: "16px",
               flexWrap: "wrap",
+              marginBottom: "16px",
             }}
           >
             <div>
@@ -1022,7 +1105,7 @@ export default function GestionDatosPage() {
                   fontWeight: 800,
                 }}
               >
-                Exportar meses anteriores
+                Ranking general de atrasos
               </h2>
               <p
                 style={{
@@ -1033,7 +1116,7 @@ export default function GestionDatosPage() {
                   maxWidth: "760px",
                 }}
               >
-                Selecciona un período para descargar el reporte completo del mes. Esta sección quedó al final de la página, como pediste.
+                Se muestra un solo ranking ordenado por atrasos vigentes y, como referencia, el histórico acumulado. Puedes elegir cuántas filas mostrar y exportarlo a Excel.
               </p>
             </div>
 
@@ -1045,31 +1128,213 @@ export default function GestionDatosPage() {
                 alignItems: "center",
               }}
             >
-              <select
-                value={selectedReportMonth}
-                onChange={(event) => setSelectedReportMonth(event.target.value)}
-                style={{ ...inputStyle, minWidth: "260px" }}
-              >
-                <option value="">Selecciona un período</option>
-                {periods.map((item) => (
-                  <option key={item.key} value={item.key}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
+              <label style={{ ...labelStyle, minWidth: "130px" }}>
+                Mostrar
+                <select
+                  value={rankingLimit}
+                  onChange={(event) => setRankingLimit(Number(event.target.value) || 5)}
+                  style={inputStyle}
+                >
+                  {[5, 10, 15, 20].map((value) => (
+                    <option key={value} value={value}>
+                      Top {value}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-              <a
-                href={reportExportUrl || undefined}
-                style={reportExportUrl ? primaryActionLinkStyle : disabledActionLinkStyle}
-                aria-disabled={!reportExportUrl}
-                onClick={(event) => {
-                  if (!reportExportUrl) event.preventDefault();
-                }}
-              >
-                Exportar período completo
+              <a href={rankingExportUrl} style={secondaryActionLinkStyle}>
+                Exportar ranking a Excel
               </a>
             </div>
           </div>
+
+          <RankingBoard items={rankingRows} onCopyEmail={copyEmail} />
+        </section>
+
+        <section
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
+            gap: "18px",
+          }}
+        >
+          <section style={cardStyle}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: "16px",
+                flexWrap: "wrap",
+              }}
+            >
+              <div>
+                <h2
+                  style={{
+                    margin: 0,
+                    fontSize: "22px",
+                    color: "#1d2430",
+                    fontWeight: 800,
+                  }}
+                >
+                  Exportar meses anteriores
+                </h2>
+                <p
+                  style={{
+                    margin: "8px 0 0",
+                    color: "#5f6570",
+                    fontSize: "14px",
+                    lineHeight: 1.6,
+                    maxWidth: "760px",
+                  }}
+                >
+                  Selecciona un período para descargar el reporte completo del mes. Esta sección quedó al final de la página, como pediste.
+                </p>
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  gap: "12px",
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                }}
+              >
+                <select
+                  value={selectedReportMonth}
+                  onChange={(event) => setSelectedReportMonth(event.target.value)}
+                  style={{ ...inputStyle, minWidth: "260px" }}
+                >
+                  <option value="">Selecciona un período</option>
+                  {periods.map((item) => (
+                    <option key={item.key} value={item.key}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+
+                <a
+                  href={reportExportUrl || undefined}
+                  style={reportExportUrl ? primaryActionLinkStyle : disabledActionLinkStyle}
+                  aria-disabled={!reportExportUrl}
+                  onClick={(event) => {
+                    if (!reportExportUrl) event.preventDefault();
+                  }}
+                >
+                  Exportar período completo
+                </a>
+              </div>
+            </div>
+          </section>
+
+          <section style={cardStyle}>
+            <div>
+              <h2
+                style={{
+                  margin: 0,
+                  fontSize: "22px",
+                  color: "#1d2430",
+                  fontWeight: 800,
+                }}
+              >
+                Actualizar base de datos
+              </h2>
+              <p
+                style={{
+                  margin: "8px 0 0",
+                  color: "#5f6570",
+                  fontSize: "14px",
+                  lineHeight: 1.6,
+                  maxWidth: "760px",
+                }}
+              >
+                Sube un archivo CSV para sincronizar la tabla <strong>students</strong> usando <strong>rut_base</strong> como llave. Se actualizan datos de ficha, incluyendo teléfono cuando la columna <strong>telefon</strong> esté presente, se crean alumnos nuevos y no se modifican los contadores de atrasos históricos ni vigentes.
+              </p>
+            </div>
+
+            <div
+              style={{
+                marginTop: "16px",
+                display: "grid",
+                gap: "12px",
+              }}
+            >
+              <label style={labelStyle}>
+                Archivo CSV
+                <input
+                  ref={csvInputRef}
+                  type="file"
+                  accept=".csv,text/csv"
+                  onChange={handleCsvFileChange}
+                  style={{ ...inputStyle, padding: "10px 14px", minHeight: "54px" }}
+                />
+              </label>
+
+              <div
+                style={{
+                  fontSize: "13px",
+                  color: "#5f6570",
+                  lineHeight: 1.6,
+                }}
+              >
+                Archivo seleccionado: <strong>{csvFile?.name || "Ninguno"}</strong>
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  gap: "12px",
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={handleImportStudentsCsv}
+                  style={primaryButtonStyle}
+                  disabled={importingCsv}
+                >
+                  {importingCsv ? "Actualizando..." : "Actualizar desde CSV"}
+                </button>
+              </div>
+
+              {importResult ? (
+                <div style={summaryCardStyle}>
+                  <div style={summaryGridStyle}>
+                    <SummaryMetric label="Filas procesadas" value={importResult.processed_rows} />
+                    <SummaryMetric label="Nuevos alumnos" value={importResult.inserted_rows} />
+                    <SummaryMetric label="Datos actualizados" value={importResult.updated_rows} />
+                    <SummaryMetric label="Sin cambios" value={importResult.unchanged_rows} />
+                    <SummaryMetric label="Filas inválidas" value={importResult.invalid_rows} />
+                    <SummaryMetric label="Contadores creados" value={importResult.counters_created} />
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: "12px",
+                      fontSize: "13px",
+                      color: "#5f6570",
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    Último archivo procesado: <strong>{importResult.file_name}</strong>
+                  </div>
+
+                  {importResult.warnings.length ? (
+                    <div style={{ marginTop: "14px", ...infoBoxStyle }}>
+                      <strong>Observaciones:</strong>
+                      <ul style={{ margin: "10px 0 0", paddingLeft: "18px" }}>
+                        {importResult.warnings.slice(0, 8).map((warning, index) => (
+                          <li key={`${warning}-${index}`}>{warning}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          </section>
         </section>
 
         <footer
@@ -1081,7 +1346,7 @@ export default function GestionDatosPage() {
             padding: "6px 8px 2px",
           }}
         >
-          Control de Atrasos v1.0 - Desarrollado por{" "}
+          Control de Atrasos v{APP_VERSION} - Desarrollado por{" "}
           <a
             href="https://ampliadesign.cl"
             target="_blank"
@@ -1187,110 +1452,131 @@ export default function GestionDatosPage() {
   );
 }
 
-function RankingCard({
-  title,
-  subtitle,
+
+function RankingBoard({
   items,
-  countKey,
   onCopyEmail,
 }: {
-  title: string;
-  subtitle: string;
   items: RankingRow[];
-  countKey: "total_historic_count" | "current_month_count";
   onCopyEmail: (email: string) => void;
 }) {
   return (
-    <section style={cardStyle}>
-      <h2
-        style={{
-          margin: 0,
-          fontSize: "22px",
-          color: "#1d2430",
-          fontWeight: 800,
-        }}
-      >
-        {title}
-      </h2>
-      <p
-        style={{
-          margin: "8px 0 0",
-          color: "#5f6570",
-          fontSize: "14px",
-          lineHeight: 1.5,
-        }}
-      >
-        {subtitle}
-      </p>
-
+    <section>
       {items.length === 0 ? (
-        <div style={{ marginTop: "18px", ...infoBoxStyle }}>
-          No hay datos disponibles para este ranking.
+        <div style={infoBoxStyle}>
+          No hay datos disponibles para el ranking.
         </div>
       ) : (
-        <div style={{ marginTop: "18px", display: "flex", flexDirection: "column", gap: "12px" }}>
-          {items.map((item, index) => (
-            <div
-              key={`${item.rut_base}-${index}`}
-              style={{
-                display: "grid",
-                gridTemplateColumns: "auto 1fr auto",
-                gap: "12px",
-                alignItems: "center",
-                padding: "14px 16px",
-                borderRadius: "18px",
-                background: "rgba(29, 116, 183, 0.05)",
-              }}
-            >
-              <div
-                style={{
-                  width: "34px",
-                  height: "34px",
-                  borderRadius: "999px",
-                  background: "#1d74b7",
-                  color: "#fff",
-                  display: "grid",
-                  placeItems: "center",
-                  fontWeight: 800,
-                  fontSize: "14px",
-                }}
-              >
-                {index + 1}
-              </div>
-
-              <div>
-                <button
-                  type="button"
-                  onClick={() => onCopyEmail(item.email)}
-                  style={nameButtonStyle}
-                  title={item.email ? `Copiar ${item.email}` : "Sin correo registrado"}
-                >
-                  {formatDisplayName(item.nombre_completo)}
-                </button>
-                <div style={{ marginTop: "4px", fontSize: "13px", color: "#5f6570" }}>
-                  {formatRut(item.rut_completo || item.rut_base)} - {repairText(item.curso)}
-                </div>
-              </div>
-
-              <div
-                style={{
-                  minWidth: "54px",
-                  textAlign: "center",
-                  padding: "8px 10px",
-                  borderRadius: "14px",
-                  background: "rgba(214, 54, 73, 0.10)",
-                  color: "#d63649",
-                  fontWeight: 800,
-                  fontSize: "14px",
-                }}
-              >
-                {item[countKey]}
-              </div>
-            </div>
-          ))}
+        <div style={{ overflowX: "auto" }}>
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              fontSize: "14px",
+            }}
+          >
+            <thead>
+              <tr>
+                {[
+                  "#",
+                  "Alumno",
+                  "RUT",
+                  "Curso",
+                  "Teléfono",
+                  "Correo",
+                  "Vigentes",
+                  "Históricos",
+                ].map((header) => (
+                  <th key={header} style={thStyle}>
+                    {header}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item, index) => (
+                <tr key={`${item.rut_base}-${index}`}>
+                  <td style={tdStyle}>
+                    <span
+                      style={{
+                        width: "30px",
+                        height: "30px",
+                        borderRadius: "999px",
+                        background: "rgba(29,116,183,0.10)",
+                        color: "#1d74b7",
+                        display: "inline-grid",
+                        placeItems: "center",
+                        fontWeight: 800,
+                        fontSize: "13px",
+                      }}
+                    >
+                      {index + 1}
+                    </span>
+                  </td>
+                  <td style={tdStyle}>
+                    <span style={{ fontWeight: 800, color: "#1d2430" }}>
+                      {formatDisplayName(item.nombre_completo)}
+                    </span>
+                  </td>
+                  <td style={tdStyle}>{formatRut(item.rut_completo || item.rut_base)}</td>
+                  <td style={tdStyle}>{repairText(item.curso)}</td>
+                  <td style={tdStyle}>{formatPhone(item.telefon)}</td>
+                  <td style={tdStyle}>
+                    <button
+                      type="button"
+                      onClick={() => onCopyEmail(item.email)}
+                      disabled={!item.email}
+                      style={item.email ? mailIconButtonStyle : disabledMailIconButtonStyle}
+                      title={item.email || "Sin correo registrado"}
+                      aria-label={item.email ? `Copiar ${item.email}` : "Sin correo registrado"}
+                    >
+                      ✉
+                    </button>
+                  </td>
+                  <td style={tdStyle}>
+                    <span style={counterPillStyle("#d63649", "rgba(214,54,73,0.10)")}>
+                      {item.current_month_count}
+                    </span>
+                  </td>
+                  <td style={tdStyle}>
+                    <span style={counterPillStyle("#1d74b7", "rgba(29,116,183,0.10)")}>
+                      {item.total_historic_count}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </section>
+  );
+}
+
+function SummaryMetric({
+  label,
+  value,
+}: {
+  label: string;
+  value: number;
+}) {
+  return (
+    <div
+      style={{
+        borderRadius: "16px",
+        padding: "14px 16px",
+        background: "rgba(29, 116, 183, 0.05)",
+        display: "grid",
+        gap: "6px",
+      }}
+    >
+      <span style={{ fontSize: "12px", color: "#5f6570", fontWeight: 800 }}>
+        {label}
+      </span>
+      <span style={{ fontSize: "24px", color: "#1d2430", fontWeight: 800 }}>
+        {value}
+      </span>
+    </div>
   );
 }
 
@@ -1395,63 +1681,38 @@ async function validateSession(): Promise<SessionValidationResult> {
   }
 }
 
-type CourseGroup = {
-  key: string;
-  label: string;
-  values: string[];
-};
-
-function buildCourseGroups(courseOptions: string[]): CourseGroup[] {
-  const normalizedEntries = courseOptions.map((course) => ({
-    original: course,
-    normalized: normalizeRole(course),
-  }));
-
-  const prebasica = normalizedEntries
-    .filter(({ normalized }) =>
-      normalized.includes("kinder") ||
-      normalized.includes("prek") ||
-      normalized.includes("pre k") ||
-      normalized.includes("pre-bas") ||
-      normalized.includes("pre bas") ||
-      normalized.includes("parv")
-    )
-    .map(({ original }) => original);
-
-  const basica = normalizedEntries
-    .filter(({ normalized }) => normalized.includes("basico"))
-    .map(({ original }) => original);
-
-  const media = normalizedEntries
-    .filter(({ normalized }) => normalized.includes("medio"))
-    .map(({ original }) => original);
-
-  return [
-    { key: "prebasica", label: "Toda la prebásica", values: prebasica },
-    { key: "basica", label: "Toda la básica", values: basica },
-    { key: "media", label: "Toda la media", values: media },
-  ].filter((group) => group.values.length > 0);
-}
-
-function getSelectedCoursesLabel(selectedCourses: string[], courseGroups: CourseGroup[]) {
-  if (!selectedCourses.length) return "Todos los cursos";
-
-  const exactGroup = courseGroups.find((group) => {
-    if (group.values.length !== selectedCourses.length) return false;
-    return group.values.every((course) => selectedCourses.includes(course));
-  });
-
-  if (exactGroup) return exactGroup.label;
-  if (selectedCourses.length === 1) return selectedCourses[0];
-  return `${selectedCourses.length} cursos seleccionados`;
-}
-
 function normalizeRole(value: string) {
   return String(value || "")
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")
     .toLowerCase()
     .trim();
+}
+
+function matchesLevel(course: string, level: LevelKey) {
+  if (level === "all") return true;
+  const normalized = normalizeRole(course);
+
+  if (level === "prebasica") {
+    return (
+      normalized.includes("kinder") ||
+      normalized.includes("prek") ||
+      normalized.includes("pre k") ||
+      normalized.includes("pre-bas") ||
+      normalized.includes("pre bas") ||
+      normalized.includes("parv")
+    );
+  }
+
+  if (level === "basica") {
+    return normalized.includes("basico");
+  }
+
+  if (level === "media") {
+    return normalized.includes("medio");
+  }
+
+  return true;
 }
 
 function formatDate(value: string) {
@@ -1467,23 +1728,19 @@ function countSuspiciousCharacters(value: string) {
 
 function repairText(value: string) {
   const cleaned = String(value || "").replace(/\s+/g, " ").trim();
-
   if (!cleaned) return "";
 
   let normalized = cleaned.normalize("NFC");
 
-  if (typeof window !== "undefined" && /[ÃÂ�]/.test(normalized)) {
+  if (/[ÃÂ�]/.test(normalized)) {
     try {
-      const bytes = Uint8Array.from(
-        Array.from(normalized).map((char) => char.charCodeAt(0) & 0xff)
-      );
+      const bytes = Uint8Array.from(Array.from(normalized).map((char) => char.charCodeAt(0) & 0xff));
       const repaired = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
-
       if (countSuspiciousCharacters(repaired) < countSuspiciousCharacters(normalized)) {
         normalized = repaired.normalize("NFC");
       }
     } catch {
-      // Si falla la reparación, usamos el texto original.
+      // Si falla la reparación, se conserva el valor original.
     }
   }
 
@@ -1498,98 +1755,10 @@ function formatRut(value: string) {
   return (value || "").trim().toUpperCase();
 }
 
-const multiSelectDetailsStyle: React.CSSProperties = {
-  position: "relative",
-};
-
-const multiSelectSummaryStyle: React.CSSProperties = {
-  width: "100%",
-  border: "1px solid rgba(29, 116, 183, 0.14)",
-  borderRadius: "16px",
-  padding: "14px 16px",
-  minHeight: "54px",
-  background: "#ffffff",
-  color: "#1d2430",
-  fontSize: "14px",
-  fontWeight: 700,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: "10px",
-  cursor: "pointer",
-  listStyle: "none",
-  userSelect: "none",
-  boxSizing: "border-box",
-};
-
-const multiSelectSummaryMetaStyle: React.CSSProperties = {
-  fontSize: "12px",
-  fontWeight: 800,
-  color: "#1d74b7",
-  background: "rgba(29, 116, 183, 0.08)",
-  borderRadius: "999px",
-  padding: "6px 10px",
-  whiteSpace: "nowrap",
-};
-
-const multiSelectPanelStyle: React.CSSProperties = {
-  marginTop: "10px",
-  background: "#ffffff",
-  borderRadius: "18px",
-  border: "1px solid rgba(29, 116, 183, 0.14)",
-  boxShadow: "0 18px 36px rgba(14, 34, 60, 0.10)",
-  padding: "14px",
-  display: "grid",
-  gap: "12px",
-};
-
-const courseGroupActionsStyle: React.CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  gap: "8px",
-};
-
-const groupButtonStyle: React.CSSProperties = {
-  border: "1px solid rgba(29, 116, 183, 0.14)",
-  background: "#f4f9fd",
-  color: "#1d74b7",
-  borderRadius: "999px",
-  padding: "10px 12px",
-  fontSize: "13px",
-  fontWeight: 800,
-  cursor: "pointer",
-};
-
-const groupButtonActiveStyle: React.CSSProperties = {
-  ...groupButtonStyle,
-  background: "linear-gradient(135deg, rgba(29,116,183,0.12), rgba(73,182,222,0.20))",
-  border: "1px solid rgba(29, 116, 183, 0.24)",
-};
-
-const courseChecklistStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-  gap: "10px",
-  maxHeight: "240px",
-  overflowY: "auto",
-  paddingRight: "4px",
-};
-
-const courseCheckboxRowStyle = (checked: boolean): React.CSSProperties => ({
-  display: "flex",
-  alignItems: "center",
-  gap: "10px",
-  padding: "10px 12px",
-  borderRadius: "14px",
-  border: checked
-    ? "1px solid rgba(29, 116, 183, 0.24)"
-    : "1px solid rgba(29, 116, 183, 0.10)",
-  background: checked ? "rgba(29, 116, 183, 0.06)" : "#ffffff",
-  fontSize: "13px",
-  fontWeight: 700,
-  color: "#1d2430",
-  cursor: "pointer",
-});
+function formatPhone(value: string) {
+  const phone = String(value || "").trim();
+  return phone || "—";
+}
 
 const mainStyle: React.CSSProperties = {
   minHeight: "100vh",
@@ -1667,6 +1836,45 @@ const textareaStyle: React.CSSProperties = {
   minHeight: "140px",
 };
 
+const summaryCardStyle: React.CSSProperties = {
+  marginTop: "4px",
+  borderRadius: "18px",
+  padding: "16px",
+  background: "rgba(29, 116, 183, 0.04)",
+  border: "1px solid rgba(29, 116, 183, 0.10)",
+};
+
+const summaryGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+  gap: "12px",
+};
+
+const tabsWrapStyle: React.CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "10px",
+};
+
+const tabStyle: React.CSSProperties = {
+  minHeight: "44px",
+  border: "1px solid rgba(29, 116, 183, 0.14)",
+  borderRadius: "999px",
+  padding: "0 16px",
+  background: "#ffffff",
+  color: "#1d74b7",
+  fontSize: "14px",
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+const tabActiveStyle: React.CSSProperties = {
+  ...tabStyle,
+  background: "linear-gradient(135deg, rgba(29,116,183,0.14), rgba(73,182,222,0.22))",
+  border: "1px solid rgba(29, 116, 183, 0.24)",
+  color: "#1d2430",
+  boxShadow: "0 12px 24px rgba(29,116,183,0.12)",
+};
 
 const primaryActionLinkStyle: React.CSSProperties = {
   minHeight: "48px",
@@ -1754,6 +1962,41 @@ const disabledEmailButtonStyle: React.CSSProperties = {
   opacity: 0.45,
   cursor: "default",
 };
+
+const mailIconButtonStyle: React.CSSProperties = {
+  width: "38px",
+  height: "38px",
+  border: "1px solid rgba(29, 116, 183, 0.18)",
+  borderRadius: "12px",
+  background: "rgba(29, 116, 183, 0.08)",
+  color: "#1d74b7",
+  fontWeight: 800,
+  fontSize: "16px",
+  cursor: "pointer",
+  display: "inline-grid",
+  placeItems: "center",
+};
+
+const disabledMailIconButtonStyle: React.CSSProperties = {
+  ...mailIconButtonStyle,
+  opacity: 0.45,
+  cursor: "default",
+};
+
+function counterPillStyle(color: string, background: string): React.CSSProperties {
+  return {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: "42px",
+    padding: "6px 10px",
+    borderRadius: "999px",
+    fontWeight: 800,
+    fontSize: "12px",
+    color,
+    background,
+  };
+}
 
 const toggleWrapperStyle: React.CSSProperties = {
   display: "inline-flex",
