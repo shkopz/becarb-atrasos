@@ -39,15 +39,12 @@ type PeriodRow = {
   is_current: boolean;
 };
 
-type LevelKey = "all" | "prebasica" | "basica" | "media";
-
 type DataManagementResponse = {
   ok: boolean;
   filters: {
     query: string;
-    course: string;
+    courses: string[];
     month: string;
-    level: LevelKey;
     page: number;
     page_size: number;
   };
@@ -81,39 +78,18 @@ type EmailTargetState = {
   email: string;
 };
 
-type ImportResultState = {
-  file_name: string;
-  processed_rows: number;
-  inserted_rows: number;
-  updated_rows: number;
-  unchanged_rows: number;
-  invalid_rows: number;
-  counters_created: number;
-  warnings: string[];
-};
-
 const SESSION_CHECK_INTERVAL_MS = 60_000;
 const DATA_REFRESH_INTERVAL_MS = 60_000;
 const AUTO_REFRESH_STORAGE_KEY = "becarb-gestion-datos-auto-refresh";
 const APP_HOME_URL = "https://atrasos.becarb.cl";
 
-const LEVEL_LABELS: Record<LevelKey, string> = {
-  all: "Todos",
-  prebasica: "Prebásica",
-  basica: "Básica",
-  media: "Media",
-};
-
 export default function GestionDatosPage() {
   const [queryInput, setQueryInput] = useState("");
-  const [courseInput, setCourseInput] = useState("");
+  const [selectedCoursesInput, setSelectedCoursesInput] = useState<string[]>([]);
   const [monthInput, setMonthInput] = useState("");
-  const [levelInput, setLevelInput] = useState<LevelKey>("all");
-
   const [query, setQuery] = useState("");
-  const [course, setCourse] = useState("");
+  const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
   const [month, setMonth] = useState("");
-  const [level, setLevel] = useState<LevelKey>("all");
   const [page, setPage] = useState(1);
 
   const [loading, setLoading] = useState(true);
@@ -129,32 +105,30 @@ export default function GestionDatosPage() {
   const [emailComment, setEmailComment] = useState("");
   const [sendingEmail, setSendingEmail] = useState(false);
   const [selectedReportMonth, setSelectedReportMonth] = useState("");
-  const [csvFile, setCsvFile] = useState<File | null>(null);
-  const [importingCsv, setImportingCsv] = useState(false);
-  const [importResult, setImportResult] = useState<ImportResultState | null>(null);
 
   const redirectTimerRef = useRef<number | null>(null);
   const emailTextareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const csvInputRef = useRef<HTMLInputElement | null>(null);
 
   const fetchUrl = useMemo(() => {
     const params = new URLSearchParams();
     params.set("page", String(page));
     if (query.trim()) params.set("q", query.trim());
-    if (course.trim()) params.set("course", course.trim());
+    selectedCourses.forEach((course) => {
+      if (course.trim()) params.append("course", course.trim());
+    });
     if (month.trim()) params.set("month", month.trim());
-    if (level !== "all") params.set("level", level);
     return `/api/data-management?${params.toString()}`;
-  }, [page, query, course, month, level]);
+  }, [page, query, selectedCourses, month]);
 
   const filteredExportUrl = useMemo(() => {
     const params = new URLSearchParams();
     if (query.trim()) params.set("q", query.trim());
-    if (course.trim()) params.set("course", course.trim());
+    selectedCourses.forEach((course) => {
+      if (course.trim()) params.append("course", course.trim());
+    });
     if (month.trim()) params.set("month", month.trim());
-    if (level !== "all") params.set("level", level);
     return `/api/export-data-management-filtered?${params.toString()}`;
-  }, [query, course, month, level]);
+  }, [query, selectedCourses, month]);
 
   const reportExportUrl = useMemo(() => {
     if (!selectedReportMonth) return "";
@@ -162,16 +136,6 @@ export default function GestionDatosPage() {
     params.set("month", selectedReportMonth);
     return `/api/export-monthly-full?${params.toString()}`;
   }, [selectedReportMonth]);
-
-  const records = data?.records || [];
-  const allCourses = data?.course_options || [];
-  const periods = data?.periods || [];
-  const totalPages = data?.total_pages || 1;
-  const totalRecords = data?.total_records || 0;
-
-  const levelCourseOptions = useMemo(() => {
-    return allCourses.filter((item) => matchesLevel(item, levelInput));
-  }, [allCourses, levelInput]);
 
   useEffect(() => {
     try {
@@ -406,14 +370,6 @@ export default function GestionDatosPage() {
     };
   }, [emailTarget, sendingEmail]);
 
-  useEffect(() => {
-    if (!courseInput) return;
-    if (levelInput === "all") return;
-    if (!matchesLevel(courseInput, levelInput)) {
-      setCourseInput("");
-    }
-  }, [levelInput, courseInput]);
-
   async function copyEmail(email: string) {
     if (!email) {
       setToast({
@@ -454,32 +410,39 @@ export default function GestionDatosPage() {
     event.preventDefault();
     setPage(1);
     setQuery(queryInput.trim());
-    setCourse(courseInput.trim());
+    setSelectedCourses([...selectedCoursesInput]);
     setMonth(monthInput.trim());
-    setLevel(levelInput);
   }
 
   function handleClearFilters() {
     const current = data?.periods?.find((item) => item.is_current);
     setQueryInput("");
-    setCourseInput("");
+    setSelectedCoursesInput([]);
     setMonthInput(current?.key || "");
-    setLevelInput("all");
     setQuery("");
-    setCourse("");
+    setSelectedCourses([]);
     setMonth(current?.key || "");
-    setLevel("all");
     setPage(1);
   }
 
-  function handleLevelTabClick(nextLevel: LevelKey) {
-    setLevelInput(nextLevel);
-    setCourseInput((prev) => (prev && !matchesLevel(prev, nextLevel) ? "" : prev));
-    setQuery(queryInput.trim());
-    setCourse((prev) => (prev && !matchesLevel(prev, nextLevel) ? "" : prev));
-    setMonth(monthInput.trim());
-    setLevel(nextLevel);
-    setPage(1);
+  function toggleCourseSelection(courseLabel: string) {
+    setSelectedCoursesInput((prev) =>
+      prev.includes(courseLabel)
+        ? prev.filter((item) => item !== courseLabel)
+        : [...prev, courseLabel]
+    );
+  }
+
+  function toggleCourseGroup(courseLabels: string[]) {
+    setSelectedCoursesInput((prev) => {
+      const allSelected = courseLabels.every((item) => prev.includes(item));
+
+      if (allSelected) {
+        return prev.filter((item) => !courseLabels.includes(item));
+      }
+
+      return Array.from(new Set([...prev, ...courseLabels]));
+    });
   }
 
   function openEmailModal(record: RecordRow) {
@@ -552,75 +515,15 @@ export default function GestionDatosPage() {
     }
   }
 
-  function handleCsvFileChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const nextFile = event.target.files?.[0] || null;
-    setCsvFile(nextFile);
-  }
-
-  async function handleImportStudentsCsv() {
-    if (!csvFile || importingCsv) {
-      setToast({
-        tone: "info",
-        message: "Selecciona un archivo CSV antes de actualizar la base de datos.",
-      });
-      return;
-    }
-
-    try {
-      setImportingCsv(true);
-
-      const formData = new FormData();
-      formData.append("file", csvFile);
-
-      const response = await fetch("/api/import-students-csv", {
-        method: "POST",
-        credentials: "include",
-        cache: "no-store",
-        body: formData,
-      });
-
-      const payload = await response.json().catch(() => ({}));
-
-      if (!response.ok || !payload?.ok) {
-        throw new Error(
-          payload?.message || "No se pudo actualizar la base de datos de estudiantes."
-        );
-      }
-
-      setImportResult({
-        file_name: payload.file_name || csvFile.name,
-        processed_rows: Number(payload.processed_rows || 0),
-        inserted_rows: Number(payload.inserted_rows || 0),
-        updated_rows: Number(payload.updated_rows || 0),
-        unchanged_rows: Number(payload.unchanged_rows || 0),
-        invalid_rows: Number(payload.invalid_rows || 0),
-        counters_created: Number(payload.counters_created || 0),
-        warnings: Array.isArray(payload.warnings) ? payload.warnings : [],
-      });
-
-      setToast({
-        tone: "success",
-        message: "Base de datos actualizada correctamente desde el CSV.",
-      });
-
-      setCsvFile(null);
-      if (csvInputRef.current) {
-        csvInputRef.current.value = "";
-      }
-
-      setRefreshKey((prev) => prev + 1);
-    } catch (err) {
-      setToast({
-        tone: "error",
-        message:
-          err instanceof Error
-            ? err.message
-            : "Ocurrió un error al actualizar la base de datos.",
-      });
-    } finally {
-      setImportingCsv(false);
-    }
-  }
+  const records = data?.records || [];
+  const availableCourses = data?.course_options || [];
+  const groupedCourseOptions = useMemo(
+    () => buildCourseGroups(availableCourses),
+    [availableCourses]
+  );
+  const periods = data?.periods || [];
+  const totalPages = data?.total_pages || 1;
+  const totalRecords = data?.total_records || 0;
 
   if (!sessionReady && sessionError) {
     return (
@@ -743,7 +646,7 @@ export default function GestionDatosPage() {
                     maxWidth: "760px",
                   }}
                 >
-                  Revisa los marcajes registrados, filtra por nombre, RUT, nivel, curso o mes, y consulta los rankings de atrasos históricos y vigentes.
+                  Revisa los marcajes registrados, filtra por nombre, RUT, curso o mes, y consulta los rankings de atrasos históricos y vigentes.
                 </p>
               </div>
             </div>
@@ -755,22 +658,6 @@ export default function GestionDatosPage() {
         </section>
 
         <section style={cardStyle}>
-          <div style={tabsWrapStyle}>
-            {(Object.keys(LEVEL_LABELS) as LevelKey[]).map((tabKey) => {
-              const active = levelInput === tabKey;
-              return (
-                <button
-                  key={tabKey}
-                  type="button"
-                  onClick={() => handleLevelTabClick(tabKey)}
-                  style={active ? tabActiveStyle : tabStyle}
-                >
-                  {LEVEL_LABELS[tabKey]}
-                </button>
-              );
-            })}
-          </div>
-
           <form
             onSubmit={handleApplyFilters}
             style={{
@@ -778,7 +665,6 @@ export default function GestionDatosPage() {
               gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
               gap: "12px",
               alignItems: "end",
-              marginTop: "16px",
             }}
           >
             <label style={labelStyle}>
@@ -793,22 +679,53 @@ export default function GestionDatosPage() {
 
             <label style={labelStyle}>
               Filtrar por curso
-              <select
-                value={courseInput}
-                onChange={(e) => setCourseInput(e.target.value)}
-                style={inputStyle}
-              >
-                <option value="">
-                  {levelInput === "all"
-                    ? "Todos los cursos"
-                    : `Todos los cursos de ${LEVEL_LABELS[levelInput]}`}
-                </option>
-                {levelCourseOptions.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </select>
+              <details style={multiSelectDetailsStyle}>
+                <summary style={multiSelectSummaryStyle}>
+                  <span>{getSelectedCoursesLabel(selectedCoursesInput, groupedCourseOptions)}</span>
+                  <span style={multiSelectSummaryMetaStyle}>
+                    {selectedCoursesInput.length > 0
+                      ? `${selectedCoursesInput.length} seleccionado(s)`
+                      : "Todos"}
+                  </span>
+                </summary>
+
+                <div style={multiSelectPanelStyle}>
+                  <div style={courseGroupActionsStyle}>
+                    {groupedCourseOptions.map((group) => {
+                      const allSelected =
+                        group.values.length > 0 &&
+                        group.values.every((item) => selectedCoursesInput.includes(item));
+
+                      return (
+                        <button
+                          key={group.key}
+                          type="button"
+                          onClick={() => toggleCourseGroup(group.values)}
+                          style={allSelected ? groupButtonActiveStyle : groupButtonStyle}
+                        >
+                          {group.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div style={courseChecklistStyle}>
+                    {availableCourses.map((item) => {
+                      const checked = selectedCoursesInput.includes(item);
+                      return (
+                        <label key={item} style={courseCheckboxRowStyle(checked)}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleCourseSelection(item)}
+                          />
+                          <span>{item}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              </details>
             </label>
 
             <label style={labelStyle}>
@@ -996,7 +913,7 @@ export default function GestionDatosPage() {
                         <td style={tdStyle}>
                           {formatRut(record.rut_completo || record.rut_base)}
                         </td>
-                        <td style={tdStyle}>{record.curso}</td>
+                        <td style={tdStyle}>{repairText(record.curso)}</td>
                         <td style={tdStyle}>
                           <span style={pillStyle(record.categoria)}>
                             {record.categoria}
@@ -1086,83 +1003,16 @@ export default function GestionDatosPage() {
           />
         </section>
 
-        <section
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
-            gap: "18px",
-          }}
-        >
-          <section style={cardStyle}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-                gap: "16px",
-                flexWrap: "wrap",
-              }}
-            >
-              <div>
-                <h2
-                  style={{
-                    margin: 0,
-                    fontSize: "22px",
-                    color: "#1d2430",
-                    fontWeight: 800,
-                  }}
-                >
-                  Exportar meses anteriores
-                </h2>
-                <p
-                  style={{
-                    margin: "8px 0 0",
-                    color: "#5f6570",
-                    fontSize: "14px",
-                    lineHeight: 1.6,
-                    maxWidth: "760px",
-                  }}
-                >
-                  Selecciona un período para descargar el reporte completo del mes. Esta sección quedó al final de la página, como pediste.
-                </p>
-              </div>
-
-              <div
-                style={{
-                  display: "flex",
-                  gap: "12px",
-                  flexWrap: "wrap",
-                  alignItems: "center",
-                }}
-              >
-                <select
-                  value={selectedReportMonth}
-                  onChange={(event) => setSelectedReportMonth(event.target.value)}
-                  style={{ ...inputStyle, minWidth: "260px" }}
-                >
-                  <option value="">Selecciona un período</option>
-                  {periods.map((item) => (
-                    <option key={item.key} value={item.key}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
-
-                <a
-                  href={reportExportUrl || undefined}
-                  style={reportExportUrl ? primaryActionLinkStyle : disabledActionLinkStyle}
-                  aria-disabled={!reportExportUrl}
-                  onClick={(event) => {
-                    if (!reportExportUrl) event.preventDefault();
-                  }}
-                >
-                  Exportar período completo
-                </a>
-              </div>
-            </div>
-          </section>
-
-          <section style={cardStyle}>
+        <section style={cardStyle}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              gap: "16px",
+              flexWrap: "wrap",
+            }}
+          >
             <div>
               <h2
                 style={{
@@ -1172,7 +1022,7 @@ export default function GestionDatosPage() {
                   fontWeight: 800,
                 }}
               >
-                Actualizar base de datos
+                Exportar meses anteriores
               </h2>
               <p
                 style={{
@@ -1183,92 +1033,43 @@ export default function GestionDatosPage() {
                   maxWidth: "760px",
                 }}
               >
-                Sube un archivo CSV para sincronizar la tabla <strong>students</strong> usando <strong>rut_base</strong> como llave. Se actualizan datos de ficha, se crean alumnos nuevos y no se modifican los contadores de atrasos históricos ni vigentes.
+                Selecciona un período para descargar el reporte completo del mes. Esta sección quedó al final de la página, como pediste.
               </p>
             </div>
 
             <div
               style={{
-                marginTop: "16px",
-                display: "grid",
+                display: "flex",
                 gap: "12px",
+                flexWrap: "wrap",
+                alignItems: "center",
               }}
             >
-              <label style={labelStyle}>
-                Archivo CSV
-                <input
-                  ref={csvInputRef}
-                  type="file"
-                  accept=".csv,text/csv"
-                  onChange={handleCsvFileChange}
-                  style={{ ...inputStyle, padding: "10px 14px", minHeight: "54px" }}
-                />
-              </label>
+              <select
+                value={selectedReportMonth}
+                onChange={(event) => setSelectedReportMonth(event.target.value)}
+                style={{ ...inputStyle, minWidth: "260px" }}
+              >
+                <option value="">Selecciona un período</option>
+                {periods.map((item) => (
+                  <option key={item.key} value={item.key}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
 
-              <div
-                style={{
-                  fontSize: "13px",
-                  color: "#5f6570",
-                  lineHeight: 1.6,
+              <a
+                href={reportExportUrl || undefined}
+                style={reportExportUrl ? primaryActionLinkStyle : disabledActionLinkStyle}
+                aria-disabled={!reportExportUrl}
+                onClick={(event) => {
+                  if (!reportExportUrl) event.preventDefault();
                 }}
               >
-                Archivo seleccionado: <strong>{csvFile?.name || "Ninguno"}</strong>
-              </div>
-
-              <div
-                style={{
-                  display: "flex",
-                  gap: "12px",
-                  flexWrap: "wrap",
-                  alignItems: "center",
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={handleImportStudentsCsv}
-                  style={primaryButtonStyle}
-                  disabled={importingCsv}
-                >
-                  {importingCsv ? "Actualizando..." : "Actualizar desde CSV"}
-                </button>
-              </div>
-
-              {importResult ? (
-                <div style={summaryCardStyle}>
-                  <div style={summaryGridStyle}>
-                    <SummaryMetric label="Filas procesadas" value={importResult.processed_rows} />
-                    <SummaryMetric label="Nuevos alumnos" value={importResult.inserted_rows} />
-                    <SummaryMetric label="Datos actualizados" value={importResult.updated_rows} />
-                    <SummaryMetric label="Sin cambios" value={importResult.unchanged_rows} />
-                    <SummaryMetric label="Filas inválidas" value={importResult.invalid_rows} />
-                    <SummaryMetric label="Contadores creados" value={importResult.counters_created} />
-                  </div>
-
-                  <div
-                    style={{
-                      marginTop: "12px",
-                      fontSize: "13px",
-                      color: "#5f6570",
-                      lineHeight: 1.6,
-                    }}
-                  >
-                    Último archivo procesado: <strong>{importResult.file_name}</strong>
-                  </div>
-
-                  {importResult.warnings.length ? (
-                    <div style={{ marginTop: "14px", ...infoBoxStyle }}>
-                      <strong>Observaciones:</strong>
-                      <ul style={{ margin: "10px 0 0", paddingLeft: "18px" }}>
-                        {importResult.warnings.slice(0, 8).map((warning, index) => (
-                          <li key={`${warning}-${index}`}>{warning}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
+                Exportar período completo
+              </a>
             </div>
-          </section>
+          </div>
         </section>
 
         <footer
@@ -1326,7 +1127,7 @@ export default function GestionDatosPage() {
             <div style={{ marginTop: "14px", color: "#1d2430", fontSize: "14px" }}>
               <strong>Estudiante:</strong> {emailTarget.nombre}
               <br />
-              <strong>Curso:</strong> {emailTarget.curso || "Sin curso"}
+              <strong>Curso:</strong> {repairText(emailTarget.curso) || "Sin curso"}
               <br />
               <strong>Correo:</strong> {emailTarget.email}
             </div>
@@ -1467,7 +1268,7 @@ function RankingCard({
                   {formatDisplayName(item.nombre_completo)}
                 </button>
                 <div style={{ marginTop: "4px", fontSize: "13px", color: "#5f6570" }}>
-                  {formatRut(item.rut_completo || item.rut_base)} - {item.curso}
+                  {formatRut(item.rut_completo || item.rut_base)} - {repairText(item.curso)}
                 </div>
               </div>
 
@@ -1490,33 +1291,6 @@ function RankingCard({
         </div>
       )}
     </section>
-  );
-}
-
-function SummaryMetric({
-  label,
-  value,
-}: {
-  label: string;
-  value: number;
-}) {
-  return (
-    <div
-      style={{
-        borderRadius: "16px",
-        padding: "14px 16px",
-        background: "rgba(29, 116, 183, 0.05)",
-        display: "grid",
-        gap: "6px",
-      }}
-    >
-      <span style={{ fontSize: "12px", color: "#5f6570", fontWeight: 800 }}>
-        {label}
-      </span>
-      <span style={{ fontSize: "24px", color: "#1d2430", fontWeight: 800 }}>
-        {value}
-      </span>
-    </div>
   );
 }
 
@@ -1621,38 +1395,63 @@ async function validateSession(): Promise<SessionValidationResult> {
   }
 }
 
-function normalizeRole(value: string) {
-  return String(value || "")
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase()
-    .trim();
-}
+type CourseGroup = {
+  key: string;
+  label: string;
+  values: string[];
+};
 
-function matchesLevel(course: string, level: LevelKey) {
-  if (level === "all") return true;
-  const normalized = normalizeRole(course);
+function buildCourseGroups(courseOptions: string[]): CourseGroup[] {
+  const normalizedEntries = courseOptions.map((course) => ({
+    original: course,
+    normalized: normalizeRole(course),
+  }));
 
-  if (level === "prebasica") {
-    return (
+  const prebasica = normalizedEntries
+    .filter(({ normalized }) =>
       normalized.includes("kinder") ||
       normalized.includes("prek") ||
       normalized.includes("pre k") ||
       normalized.includes("pre-bas") ||
       normalized.includes("pre bas") ||
       normalized.includes("parv")
-    );
-  }
+    )
+    .map(({ original }) => original);
 
-  if (level === "basica") {
-    return normalized.includes("basico");
-  }
+  const basica = normalizedEntries
+    .filter(({ normalized }) => normalized.includes("basico"))
+    .map(({ original }) => original);
 
-  if (level === "media") {
-    return normalized.includes("medio");
-  }
+  const media = normalizedEntries
+    .filter(({ normalized }) => normalized.includes("medio"))
+    .map(({ original }) => original);
 
-  return true;
+  return [
+    { key: "prebasica", label: "Toda la prebásica", values: prebasica },
+    { key: "basica", label: "Toda la básica", values: basica },
+    { key: "media", label: "Toda la media", values: media },
+  ].filter((group) => group.values.length > 0);
+}
+
+function getSelectedCoursesLabel(selectedCourses: string[], courseGroups: CourseGroup[]) {
+  if (!selectedCourses.length) return "Todos los cursos";
+
+  const exactGroup = courseGroups.find((group) => {
+    if (group.values.length !== selectedCourses.length) return false;
+    return group.values.every((course) => selectedCourses.includes(course));
+  });
+
+  if (exactGroup) return exactGroup.label;
+  if (selectedCourses.length === 1) return selectedCourses[0];
+  return `${selectedCourses.length} cursos seleccionados`;
+}
+
+function normalizeRole(value: string) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .trim();
 }
 
 function formatDate(value: string) {
@@ -1662,19 +1461,135 @@ function formatDate(value: string) {
   return `${day}/${month}/${year}`;
 }
 
+function countSuspiciousCharacters(value: string) {
+  return (value.match(/[ÃÂ�]/g) || []).length;
+}
+
+function repairText(value: string) {
+  const cleaned = String(value || "").replace(/\s+/g, " ").trim();
+
+  if (!cleaned) return "";
+
+  let normalized = cleaned.normalize("NFC");
+
+  if (typeof window !== "undefined" && /[ÃÂ�]/.test(normalized)) {
+    try {
+      const bytes = Uint8Array.from(
+        Array.from(normalized).map((char) => char.charCodeAt(0) & 0xff)
+      );
+      const repaired = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+
+      if (countSuspiciousCharacters(repaired) < countSuspiciousCharacters(normalized)) {
+        normalized = repaired.normalize("NFC");
+      }
+    } catch {
+      // Si falla la reparación, usamos el texto original.
+    }
+  }
+
+  return normalized;
+}
+
 function formatDisplayName(value: string) {
-  if (!value) return "";
-  const cleaned = value.replace(/\s+/g, " ").trim();
-  return cleaned
-    .toLocaleLowerCase("es-CL")
-    .replace(/(^|[\s\-('"“”«»¿¡\/])\p{L}/gu, (match) =>
-      match.toLocaleUpperCase("es-CL")
-    );
+  return repairText(value);
 }
 
 function formatRut(value: string) {
   return (value || "").trim().toUpperCase();
 }
+
+const multiSelectDetailsStyle: React.CSSProperties = {
+  position: "relative",
+};
+
+const multiSelectSummaryStyle: React.CSSProperties = {
+  width: "100%",
+  border: "1px solid rgba(29, 116, 183, 0.14)",
+  borderRadius: "16px",
+  padding: "14px 16px",
+  minHeight: "54px",
+  background: "#ffffff",
+  color: "#1d2430",
+  fontSize: "14px",
+  fontWeight: 700,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "10px",
+  cursor: "pointer",
+  listStyle: "none",
+  userSelect: "none",
+  boxSizing: "border-box",
+};
+
+const multiSelectSummaryMetaStyle: React.CSSProperties = {
+  fontSize: "12px",
+  fontWeight: 800,
+  color: "#1d74b7",
+  background: "rgba(29, 116, 183, 0.08)",
+  borderRadius: "999px",
+  padding: "6px 10px",
+  whiteSpace: "nowrap",
+};
+
+const multiSelectPanelStyle: React.CSSProperties = {
+  marginTop: "10px",
+  background: "#ffffff",
+  borderRadius: "18px",
+  border: "1px solid rgba(29, 116, 183, 0.14)",
+  boxShadow: "0 18px 36px rgba(14, 34, 60, 0.10)",
+  padding: "14px",
+  display: "grid",
+  gap: "12px",
+};
+
+const courseGroupActionsStyle: React.CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "8px",
+};
+
+const groupButtonStyle: React.CSSProperties = {
+  border: "1px solid rgba(29, 116, 183, 0.14)",
+  background: "#f4f9fd",
+  color: "#1d74b7",
+  borderRadius: "999px",
+  padding: "10px 12px",
+  fontSize: "13px",
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+const groupButtonActiveStyle: React.CSSProperties = {
+  ...groupButtonStyle,
+  background: "linear-gradient(135deg, rgba(29,116,183,0.12), rgba(73,182,222,0.20))",
+  border: "1px solid rgba(29, 116, 183, 0.24)",
+};
+
+const courseChecklistStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+  gap: "10px",
+  maxHeight: "240px",
+  overflowY: "auto",
+  paddingRight: "4px",
+};
+
+const courseCheckboxRowStyle = (checked: boolean): React.CSSProperties => ({
+  display: "flex",
+  alignItems: "center",
+  gap: "10px",
+  padding: "10px 12px",
+  borderRadius: "14px",
+  border: checked
+    ? "1px solid rgba(29, 116, 183, 0.24)"
+    : "1px solid rgba(29, 116, 183, 0.10)",
+  background: checked ? "rgba(29, 116, 183, 0.06)" : "#ffffff",
+  fontSize: "13px",
+  fontWeight: 700,
+  color: "#1d2430",
+  cursor: "pointer",
+});
 
 const mainStyle: React.CSSProperties = {
   minHeight: "100vh",
@@ -1752,45 +1667,6 @@ const textareaStyle: React.CSSProperties = {
   minHeight: "140px",
 };
 
-const summaryCardStyle: React.CSSProperties = {
-  marginTop: "4px",
-  borderRadius: "18px",
-  padding: "16px",
-  background: "rgba(29, 116, 183, 0.04)",
-  border: "1px solid rgba(29, 116, 183, 0.10)",
-};
-
-const summaryGridStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-  gap: "12px",
-};
-
-const tabsWrapStyle: React.CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  gap: "10px",
-};
-
-const tabStyle: React.CSSProperties = {
-  minHeight: "44px",
-  border: "1px solid rgba(29, 116, 183, 0.14)",
-  borderRadius: "999px",
-  padding: "0 16px",
-  background: "#ffffff",
-  color: "#1d74b7",
-  fontSize: "14px",
-  fontWeight: 800,
-  cursor: "pointer",
-};
-
-const tabActiveStyle: React.CSSProperties = {
-  ...tabStyle,
-  background: "linear-gradient(135deg, rgba(29,116,183,0.14), rgba(73,182,222,0.22))",
-  border: "1px solid rgba(29, 116, 183, 0.24)",
-  color: "#1d2430",
-  boxShadow: "0 12px 24px rgba(29,116,183,0.12)",
-};
 
 const primaryActionLinkStyle: React.CSSProperties = {
   minHeight: "48px",

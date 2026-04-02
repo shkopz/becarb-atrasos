@@ -28,6 +28,7 @@ export async function GET() {
           apellidos,
           curso,
           email,
+          telefon,
           activo
         `)
         .eq("activo", true)
@@ -43,10 +44,7 @@ export async function GET() {
       const chunk = data || [];
       allRows = allRows.concat(chunk);
 
-      if (chunk.length < pageSize) {
-        break;
-      }
-
+      if (chunk.length < pageSize) break;
       from += pageSize;
     }
 
@@ -58,6 +56,7 @@ export async function GET() {
         apellidos: String(row.apellidos || ""),
         curso: String(row.curso || ""),
         email: String(row.email || "").trim().toLowerCase(),
+        telefon: String(row.telefon || "").trim(),
         activo: Boolean(row.activo),
       }))
       .sort(sortByName);
@@ -79,9 +78,6 @@ export async function GET() {
     const message =
       error instanceof Error ? error.message : "Error desconocido al leer alumnos";
 
-    return NextResponse.json(
-      { ok: false, message },
-      { status: 500 }
-    );
+    return NextResponse.json({ ok: false, message }, { status: 500 });
   }
 }

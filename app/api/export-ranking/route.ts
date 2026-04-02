@@ -7,19 +7,18 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-function getChileNow() {
-  const now = new Date();
-  const parts = new Intl.DateTimeFormat("sv-SE", {
-    timeZone: "America/Santiago",
-    year: "numeric",
-    month: "2-digit",
-  }).formatToParts(now);
-  const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
-  return { year: Number(map.year), month: Number(map.month) };
+function normalizeRole(value: string) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .trim();
 }
 
-function pad(n: number) {
-  return String(n).padStart(2, "0");
+function formatDisplayName(value: string) {
+  return String(value || "")
+    .toLocaleLowerCase("es-CL")
+    .replace(/(^|[\s\-('"“”«»¿¡\/])\p{L}/gu, (match) => match.toLocaleUpperCase("es-CL"));
 }
 
 async function validateRequestSession(request: Request) {
@@ -30,10 +29,10 @@ async function validateRequestSession(request: Request) {
     cache: "no-store",
   });
   const payload = await response.json().catch(() => ({}));
+  const role = normalizeRole(payload?.user?.role || payload?.role || payload?.user?.tipo || payload?.tipo || "");
   const authenticated = Boolean(payload?.authenticated ?? payload?.isAuthenticated ?? payload?.logged_in ?? payload?.loggedIn ?? payload?.user ?? payload?.session);
-  if (!response.ok || !authenticated) {
-    return { ok: false, status: 401, message: "Tu sesión expiró o ya no está activa." };
-  }
+  if (!response.ok || !authenticated) return { ok: false, status: 401, message: "Tu sesión expiró o ya no está activa." };
+  if (!["admin", "administrador", "superadmin"].includes(role)) return { ok: false, status: 403, message: "No tienes permisos para exportar rankings." };
   return { ok: true, status: 200, message: "" };
 }
 
@@ -43,13 +42,7 @@ export async function GET(request: Request) {
     if (!session.ok) return NextResponse.json({ ok: false, message: session.message }, { status: session.status });
 
     const { searchParams } = new URL(request.url);
-    const now = getChileNow();
-    const year = Number(searchParams.get("year") || now.year);
-    const month = Number(searchParams.get("month") || now.month);
-
-    if (!year || !month || month < 1 || month > 12) {
-      return NextResponse.json({ ok: false, message: "Parámetros de año o mes inválidos." }, { status: 400 });
-    }
+    const limit = [5, 10, 15, 20].includes(Number(searchParams.get("limit"))) ? Number(searchParams.get("limit")) : 5;
 
     const { data, error } = await supabase
       .from("student_counters")
@@ -66,11 +59,10 @@ export async function GET(request: Request) {
           telefon,
           activo
         )
-      `)
-      .gte("current_month_count", 3);
+      `);
 
     if (error) {
-      return NextResponse.json({ ok: false, message: "No se pudo generar el informe mensual." }, { status: 500 });
+      return NextResponse.json({ ok: false, message: "No se pudo exportar el ranking." }, { status: 500 });
     }
 
     const rows = (data || [])
@@ -78,34 +70,36 @@ export async function GET(request: Request) {
       .map((row: any) => ({
         rut_base: row.students?.rut_base || "",
         rut_completo: row.students?.rut_completo || "",
-        alumno: `${row.students?.nombres || ""} ${row.students?.apellidos || ""}`.trim(),
+        alumno: formatDisplayName(`${row.students?.nombres || ""} ${row.students?.apellidos || ""}`.trim()),
         curso: row.students?.curso || "",
         telefon: row.students?.telefon || "",
         email: row.students?.email || "",
         atrasos_vigentes: row.current_month_count || 0,
         atrasos_historicos: row.total_historic_count || 0,
-        periodo: `${year}-${pad(month)}`,
       }))
+      .filter((row) => row.atrasos_vigentes > 0 || row.atrasos_historicos > 0)
       .sort((a, b) =>
         b.atrasos_vigentes - a.atrasos_vigentes ||
         b.atrasos_historicos - a.atrasos_historicos ||
         a.alumno.localeCompare(b.alumno, "es")
-      );
+      )
+      .slice(0, limit)
+      .map((row, index) => ({ posicion: index + 1, ...row }));
 
     const worksheet = XLSX.utils.json_to_sheet(rows);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Alumnos 3+");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Ranking");
     const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
 
     return new NextResponse(buffer, {
       status: 200,
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": `attachment; filename="informe_atrasos_alerta_${year}_${pad(month)}.xlsx"`,
+        "Content-Disposition": `attachment; filename="ranking_atrasos_top_${limit}.xlsx"`,
       },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Error desconocido al exportar Excel";
+    const message = error instanceof Error ? error.message : "Error desconocido al exportar ranking";
     return NextResponse.json({ ok: false, message }, { status: 500 });
   }
 }

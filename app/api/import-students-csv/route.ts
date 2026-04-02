@@ -23,6 +23,7 @@ type CsvStudentRow = {
   apellidos: string;
   curso: string;
   email: string;
+  telefon: string | null;
   activo: boolean;
 };
 
@@ -34,6 +35,7 @@ type ExistingStudentRow = {
   apellidos: string | null;
   curso: string | null;
   email: string | null;
+  telefon: string | null;
   activo: boolean | null;
 };
 
@@ -45,41 +47,36 @@ function normalizeRole(value: string) {
     .trim();
 }
 
+function countSuspiciousCharacters(value: string) {
+  return (value.match(/[ÃÂ�]/g) || []).length;
+}
 
-function repairCommonMojibake(value: string) {
-  const text = String(value || "");
-  if (!text) return "";
+function repairMojibake(value: string) {
+  const cleaned = String(value || "")
+    .replace(/^\uFEFF/, "")
+    .replace(/\s+/g, " ")
+    .trim();
 
-  // Casos típicos como: BelÃ©n, bÃ¡sico, MuÃ±oz
-  if (/[ÃÂÐÑ]/.test(text)) {
+  if (!cleaned) return "";
+
+  let normalized = cleaned.normalize("NFC");
+
+  if (/[ÃÂ�]/.test(normalized)) {
     try {
-      const repaired = new TextDecoder("utf-8").decode(
-        Uint8Array.from(text, (char) => char.charCodeAt(0) & 0xff)
-      );
-      if (repaired && repaired !== text) {
-        return repaired;
+      const repaired = Buffer.from(normalized, "latin1").toString("utf8");
+      if (countSuspiciousCharacters(repaired) < countSuspiciousCharacters(normalized)) {
+        normalized = repaired.normalize("NFC");
       }
     } catch {
-      // Si no se puede reparar, devolvemos el valor original.
+      // Si falla la reparación, se conserva el valor original.
     }
   }
 
-  return text;
+  return normalized;
 }
-
-function decodeCsvBuffer(buffer: Buffer) {
-  // El CSV subido por el colegio viene en UTF-8.
-  // Lo decodificamos explícitamente para evitar mojibake tipo "BelÃ©n".
-  const decoded = new TextDecoder("utf-8").decode(buffer);
-  return decoded.replace(/^\uFEFF/, "");
-}
-
 
 function normalizeText(value: unknown) {
-  return repairCommonMojibake(String(value ?? ""))
-    .replace(/\s+/g, " ")
-    .trim()
-    .normalize("NFC");
+  return repairMojibake(String(value ?? ""));
 }
 
 function normalizeRutBase(value: unknown) {
@@ -87,11 +84,15 @@ function normalizeRutBase(value: unknown) {
 }
 
 function normalizeRutCompleto(value: unknown) {
-  return repairCommonMojibake(String(value ?? "")).trim().toUpperCase();
+  return repairMojibake(String(value ?? "")).toUpperCase();
 }
 
 function normalizeEmail(value: unknown) {
-  return repairCommonMojibake(String(value ?? "")).trim().toLowerCase();
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function normalizePhone(value: unknown) {
+  return String(value ?? "").replace(/\s+/g, " ").trim();
 }
 
 function parseBoolean(value: unknown) {
@@ -169,7 +170,7 @@ function getHeaderIndexMap(headerRow: unknown[]) {
   const map = new Map<string, number>();
 
   headerRow.forEach((cell, index) => {
-    const key = normalizeRole(repairCommonMojibake(String(cell ?? "").replace(/^\uFEFF/, "")));
+    const key = normalizeRole(String(cell ?? "").replace(/^\uFEFF/, ""));
     if (key) {
       map.set(key, index);
     }
@@ -178,9 +179,27 @@ function getHeaderIndexMap(headerRow: unknown[]) {
   return map;
 }
 
+function decodeCsvBuffer(buffer: Buffer) {
+  try {
+    const utf8 = new TextDecoder("utf-8", { fatal: true }).decode(buffer);
+    return repairMojibake(utf8);
+  } catch {
+    const latin1 = new TextDecoder("latin1").decode(buffer);
+    return repairMojibake(latin1);
+  }
+}
+
+function findHeaderIndex(headerMap: Map<string, number>, aliases: string[]) {
+  for (const alias of aliases) {
+    const index = headerMap.get(normalizeRole(alias));
+    if (typeof index === "number") return index;
+  }
+  return -1;
+}
+
 function parseCsvRowsFromWorkbook(buffer: Buffer) {
   const csvText = decodeCsvBuffer(buffer);
-  const workbook = XLSX.read(csvText, { type: "string", raw: false, codepage: 65001 });
+  const workbook = XLSX.read(csvText, { type: "string", raw: false });
   const sheetName = workbook.SheetNames[0];
 
   if (!sheetName) {
@@ -200,6 +219,30 @@ function parseCsvRowsFromWorkbook(buffer: Buffer) {
   }
 
   const headerMap = getHeaderIndexMap(rows[0]);
+
+  const indexes = {
+    rut_base: findHeaderIndex(headerMap, ["rut_base", "rut base"]),
+    rut_completo: findHeaderIndex(headerMap, ["rut_completo", "rut completo"]),
+    nombres: findHeaderIndex(headerMap, ["nombres", "nombre", "name"]),
+    apellidos: findHeaderIndex(headerMap, ["apellidos", "apellido", "last_name"]),
+    curso: findHeaderIndex(headerMap, ["curso", "course"]),
+    email: findHeaderIndex(headerMap, ["email", "correo", "correo_electronico", "correo electronico"]),
+    activo: findHeaderIndex(headerMap, ["activo", "activa", "habilitado", "enabled"]),
+    telefon: findHeaderIndex(headerMap, [
+      "telefon",
+      "telefono",
+      "teléfono",
+      "telefono alumno",
+      "teléfono alumno",
+      "fono",
+      "fono alumno",
+      "celular",
+      "telefono estudiante",
+      "teléfono estudiante",
+      "phone",
+    ]),
+  };
+
   const requiredHeaders = [
     "rut_base",
     "rut_completo",
@@ -208,9 +251,10 @@ function parseCsvRowsFromWorkbook(buffer: Buffer) {
     "curso",
     "email",
     "activo",
-  ];
+  ] as const;
 
-  const missingHeaders = requiredHeaders.filter((header) => !headerMap.has(header));
+  const missingHeaders = requiredHeaders.filter((header) => indexes[header] < 0);
+  const hasTelefonColumn = indexes.telefon >= 0;
 
   if (missingHeaders.length) {
     throw new Error(
@@ -225,7 +269,7 @@ function parseCsvRowsFromWorkbook(buffer: Buffer) {
   rows.slice(1).forEach((row, index) => {
     const rowNumber = index + 2;
 
-    const rutBase = normalizeRutBase(row[headerMap.get("rut_base")!]);
+    const rutBase = normalizeRutBase(row[indexes.rut_base]);
     if (!rutBase) {
       invalidRows += 1;
       warnings.push(`Fila ${rowNumber}: rut_base vacío o inválido. Se omitió.`);
@@ -234,12 +278,13 @@ function parseCsvRowsFromWorkbook(buffer: Buffer) {
 
     const parsedRow: CsvStudentRow = {
       rut_base: rutBase,
-      rut_completo: normalizeRutCompleto(row[headerMap.get("rut_completo")!]),
-      nombres: normalizeText(row[headerMap.get("nombres")!]),
-      apellidos: normalizeText(row[headerMap.get("apellidos")!]),
-      curso: normalizeText(row[headerMap.get("curso")!]),
-      email: normalizeEmail(row[headerMap.get("email")!]),
-      activo: parseBoolean(row[headerMap.get("activo")!]),
+      rut_completo: normalizeRutCompleto(row[indexes.rut_completo]),
+      nombres: normalizeText(row[indexes.nombres]),
+      apellidos: normalizeText(row[indexes.apellidos]),
+      curso: normalizeText(row[indexes.curso]),
+      email: normalizeEmail(row[indexes.email]),
+      telefon: hasTelefonColumn ? normalizePhone(row[indexes.telefon]) : null,
+      activo: parseBoolean(row[indexes.activo]),
     };
 
     if (rowsByRut.has(rutBase)) {
@@ -255,6 +300,7 @@ function parseCsvRowsFromWorkbook(buffer: Buffer) {
     rows: [...rowsByRut.values()],
     warnings,
     invalidRows,
+    hasTelefonColumn,
   };
 }
 
@@ -265,6 +311,7 @@ function hasStudentChanges(existing: ExistingStudentRow, incoming: CsvStudentRow
     normalizeText(existing.apellidos) !== incoming.apellidos ||
     normalizeText(existing.curso) !== incoming.curso ||
     normalizeEmail(existing.email) !== incoming.email ||
+    (incoming.telefon !== null && normalizePhone(existing.telefon) !== normalizePhone(incoming.telefon)) ||
     Boolean(existing.activo) !== incoming.activo
   );
 }
@@ -275,7 +322,7 @@ async function fetchExistingStudents(rutBases: string[]) {
   for (const chunk of chunkArray(rutBases, 400)) {
     const { data, error } = await supabase
       .from("students")
-      .select("id, rut_base, rut_completo, nombres, apellidos, curso, email, activo")
+      .select("id, rut_base, rut_completo, nombres, apellidos, curso, email, telefon, activo")
       .in("rut_base", chunk);
 
     if (error) {
@@ -395,13 +442,18 @@ export async function POST(request: Request) {
       const existing = existingMap.get(row.rut_base);
 
       if (!existing) {
-        rowsToUpsert.push(row);
+        rowsToUpsert.push({ ...row, telefon: row.telefon ?? null });
         insertedRutBases.push(row.rut_base);
         return;
       }
 
-      if (hasStudentChanges(existing, row)) {
-        rowsToUpsert.push(row);
+      const normalizedRow = {
+        ...row,
+        telefon: parsed.hasTelefonColumn ? row.telefon : normalizePhone(existing.telefon),
+      };
+
+      if (hasStudentChanges(existing, normalizedRow)) {
+        rowsToUpsert.push(normalizedRow);
         updatedRows += 1;
         return;
       }

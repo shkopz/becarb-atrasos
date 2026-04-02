@@ -8,7 +8,15 @@ const supabase = createClient(
 
 type LevelKey = "all" | "prebasica" | "basica" | "media";
 
-function normalizeText(value: string) {
+function normalizeText(value: unknown) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .trim();
+}
+
+function normalizeRole(value: string) {
   return String(value || "")
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")
@@ -18,40 +26,20 @@ function normalizeText(value: string) {
 
 function getChileCurrentMonthKey() {
   const now = new Date();
-
   const parts = new Intl.DateTimeFormat("sv-SE", {
     timeZone: "America/Santiago",
     year: "numeric",
     month: "2-digit",
   }).formatToParts(now);
-
   const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
   return `${map.year}-${map.month}`;
 }
 
 function monthNameEs(month: number) {
   return [
-    "enero",
-    "febrero",
-    "marzo",
-    "abril",
-    "mayo",
-    "junio",
-    "julio",
-    "agosto",
-    "septiembre",
-    "octubre",
-    "noviembre",
-    "diciembre",
+    "enero", "febrero", "marzo", "abril", "mayo", "junio",
+    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
   ][month - 1];
-}
-
-function normalizeRole(value: string) {
-  return String(value || "")
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase()
-    .trim();
 }
 
 function matchesLevel(course: string, level: LevelKey) {
@@ -69,14 +57,8 @@ function matchesLevel(course: string, level: LevelKey) {
     );
   }
 
-  if (level === "basica") {
-    return normalized.includes("basico");
-  }
-
-  if (level === "media") {
-    return normalized.includes("medio");
-  }
-
+  if (level === "basica") return normalized.includes("basico");
+  if (level === "media") return normalized.includes("medio");
   return true;
 }
 
@@ -111,29 +93,14 @@ async function validateRequestSession(request: Request) {
   );
 
   if (!response.ok || !authenticated) {
-    return {
-      ok: false,
-      status: 401,
-      message: "Tu sesión expiró o ya no está activa.",
-      role,
-    };
+    return { ok: false, status: 401, message: "Tu sesión expiró o ya no está activa." };
   }
 
   if (!["admin", "administrador", "superadmin"].includes(role)) {
-    return {
-      ok: false,
-      status: 403,
-      message: "No tienes permisos para acceder a Gestión de Datos.",
-      role,
-    };
+    return { ok: false, status: 403, message: "No tienes permisos para acceder a Gestión de Datos." };
   }
 
-  return {
-    ok: true,
-    status: 200,
-    message: "",
-    role,
-  };
+  return { ok: true, status: 200, message: "" };
 }
 
 export async function GET(request: Request) {
@@ -148,17 +115,13 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-
     const page = Math.max(Number(searchParams.get("page") || 1), 1);
-    const pageSize = 15;
+    const pageSize = Math.min(Math.max(Number(searchParams.get("page_size") || 15), 5), 100);
+    const rankingLimit = [5, 10, 15, 20].includes(Number(searchParams.get("ranking_limit"))) ? Number(searchParams.get("ranking_limit")) : 5;
     const query = String(searchParams.get("q") || "").trim();
     const course = String(searchParams.get("course") || "").trim();
     const month = String(searchParams.get("month") || "").trim();
-    const level = (String(searchParams.get("level") || "all").trim().toLowerCase() || "all") as LevelKey;
-
-    const safeLevel: LevelKey = ["all", "prebasica", "basica", "media"].includes(level)
-      ? level
-      : "all";
+    const level = (searchParams.get("level") || "all") as LevelKey;
 
     const { data: tardyData, error: tardyError } = await supabase
       .from("tardy_records")
@@ -176,7 +139,8 @@ export async function GET(request: Request) {
           nombres,
           apellidos,
           curso,
-          email
+          email,
+          telefon
         )
       `)
       .eq("cancelled", false)
@@ -210,14 +174,13 @@ export async function GET(request: Request) {
         nombre_completo: nombreCompleto,
         curso: record.students?.curso || "",
         email: record.students?.email || "",
+        telefon: record.students?.telefon || "",
         month_key: monthKey,
       };
     });
 
     const currentMonthKey = getChileCurrentMonthKey();
-
-    const periodSet = new Set<string>();
-    periodSet.add(currentMonthKey);
+    const periodSet = new Set<string>([currentMonthKey]);
 
     flatRecords.forEach((record) => {
       if (/^\d{4}-\d{2}$/.test(record.month_key)) {
@@ -230,14 +193,11 @@ export async function GET(request: Request) {
       .map((key) => {
         const [year, monthNumber] = key.split("-").map(Number);
         const isCurrent = key === currentMonthKey;
-
         return {
           key,
           year,
           month: monthNumber,
-          label: isCurrent
-            ? `${monthNameEs(monthNumber)} ${year} · mes en curso`
-            : `${monthNameEs(monthNumber)} ${year}`,
+          label: isCurrent ? `${monthNameEs(monthNumber)} ${year} · mes en curso` : `${monthNameEs(monthNumber)} ${year}`,
           is_current: isCurrent,
         };
       });
@@ -253,25 +213,18 @@ export async function GET(request: Request) {
         normalizeText(record.rut_base).includes(normalizedQuery) ||
         normalizeText(record.rut_completo).includes(normalizedQuery);
 
-      const matchesCourse =
-        !normalizedCourse ||
-        normalizeText(record.curso) === normalizedCourse;
+      const matchesCourse = !normalizedCourse || normalizeText(record.curso) === normalizedCourse;
+      const matchesMonth = !normalizedMonth || normalizeText(record.month_key) === normalizedMonth;
+      const matchesLevelFilter = matchesLevel(record.curso, level);
 
-      const matchesMonth =
-        !normalizedMonth ||
-        normalizeText(record.month_key) === normalizedMonth;
-
-      const matchesSelectedLevel = matchesLevel(record.curso, safeLevel);
-
-      return matchesQuery && matchesCourse && matchesMonth && matchesSelectedLevel;
+      return matchesQuery && matchesCourse && matchesMonth && matchesLevelFilter;
     });
 
     const totalRecords = filteredRecords.length;
     const totalPages = Math.max(Math.ceil(totalRecords / pageSize), 1);
     const safePage = Math.min(page, totalPages);
     const start = (safePage - 1) * pageSize;
-    const end = start + pageSize;
-    const paginatedRecords = filteredRecords.slice(start, end);
+    const paginatedRecords = filteredRecords.slice(start, start + pageSize);
 
     const courseOptions = [...new Set(
       flatRecords
@@ -291,6 +244,7 @@ export async function GET(request: Request) {
           apellidos,
           curso,
           email,
+          telefon,
           activo
         )
       `);
@@ -312,25 +266,19 @@ export async function GET(request: Request) {
         nombre_completo: `${row.students?.nombres || ""} ${row.students?.apellidos || ""}`.trim(),
         curso: row.students?.curso || "",
         email: row.students?.email || "",
+        telefon: row.students?.telefon || "",
         current_month_count: row.current_month_count || 0,
         total_historic_count: row.total_historic_count || 0,
       }));
 
-    const historicalRanking = [...counters]
-      .filter((row) => row.total_historic_count > 0)
+    const ranking = [...counters]
+      .filter((row) => row.current_month_count > 0 || row.total_historic_count > 0)
       .sort((a, b) =>
+        b.current_month_count - a.current_month_count ||
         b.total_historic_count - a.total_historic_count ||
         a.nombre_completo.localeCompare(b.nombre_completo, "es")
       )
-      .slice(0, 5);
-
-    const currentRanking = [...counters]
-      .filter((row) => row.current_month_count > 0)
-      .sort((a, b) =>
-        b.current_month_count - a.current_month_count ||
-        a.nombre_completo.localeCompare(b.nombre_completo, "es")
-      )
-      .slice(0, 5);
+      .slice(0, rankingLimit);
 
     return NextResponse.json(
       {
@@ -339,7 +287,7 @@ export async function GET(request: Request) {
           query,
           course,
           month,
-          level: safeLevel,
+          level,
           page: safePage,
           page_size: pageSize,
         },
@@ -348,10 +296,8 @@ export async function GET(request: Request) {
         course_options: courseOptions,
         periods,
         records: paginatedRecords,
-        rankings: {
-          historical: historicalRanking,
-          current: currentRanking,
-        },
+        ranking,
+        ranking_limit: rankingLimit,
       },
       {
         headers: {
@@ -360,14 +306,7 @@ export async function GET(request: Request) {
       }
     );
   } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Error desconocido al cargar gestión de datos";
-
-    return NextResponse.json(
-      { ok: false, message },
-      { status: 500 }
-    );
+    const message = error instanceof Error ? error.message : "Error desconocido al cargar gestión de datos";
+    return NextResponse.json({ ok: false, message }, { status: 500 });
   }
 }

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Becarb | Control de Atrasos Beta</title>
+  <title>Becarb | Control de Atrasos v1.1</title>
   <style>
     :root {
       --becarb-blue: #49b6de;
@@ -919,6 +919,56 @@
       background: #e9f4fb;
     }
 
+    .mail-copy-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      border: 1px solid rgba(29,116,183,0.14);
+      background: rgba(29,116,183,0.08);
+      color: var(--becarb-deep);
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+      position: relative;
+      display: inline-grid;
+      place-items: center;
+    }
+
+    .mail-copy-btn:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+
+    .mail-copy-btn::after {
+      content: attr(data-email);
+      position: absolute;
+      right: calc(100% + 10px);
+      top: 50%;
+      transform: translateY(-50%);
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(29,36,48,0.94);
+      color: #fff;
+      font-size: 12px;
+      line-height: 1.2;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.16s ease;
+      box-shadow: 0 12px 26px rgba(14,34,60,0.18);
+    }
+
+    .mail-copy-btn:hover::after,
+    .mail-copy-btn:focus-visible::after {
+      opacity: 1;
+    }
+
+    .stat .v.text-value {
+      font-size: 17px;
+      line-height: 1.35;
+      letter-spacing: -0.01em;
+    }
+
     .automation-note {
       margin-top: 12px;
       padding: 14px 16px;
@@ -1746,9 +1796,9 @@
         <div class="login-brand">
           <img src="https://becarb.cl/wp-content/uploads/2019/10/logoweb_becarb_trans.png" alt="Logo Becarb" />
         </div>
-        <span class="tag">Acceso al sistema · Beta demo</span>
+        <span class="tag">Acceso al sistema · Versión 1.1</span>
         <h1>Control de atrasos</h1>
-        <p>Ingresa tus credenciales para acceder al módulo de portería y al informe mensual del beta.</p>
+        <p>Ingresa tus credenciales para acceder al sistema de portería y a la gestión institucional de atrasos.</p>
 
         <form class="login-fields" id="loginForm" autocomplete="on">
           <div class="login-field">
@@ -1807,12 +1857,10 @@
           <div class="brand">
             <img src="https://becarb.cl/wp-content/uploads/2019/10/logoweb_becarb_trans.png" alt="Logo Becarb" />
           </div>
-          <span class="tag">Beta demo · Control de atrasos</span>
+          <span class="tag">Sistema de Control de Atrasos · v1.1</span>
           <h1>Ingreso rápido por RUT o QR, con hora automática del sistema.</h1>
           <p>
-            Esta versión de demostración simula el flujo de portería: lectura de RUT sin dígito verificador,
-            cruce con la base de estudiantes, bloqueo de duplicados en el día, conteo mensual de atrasos y
-            preparación del informe final con notificación simulada al correo del alumno.
+            Registro rápido por RUT o QR, con hora automática del sistema, control de duplicados diarios, conteo mensual de atrasos y consulta institucional de reportes.
           </p>
         </div>
       </article>
@@ -1824,7 +1872,7 @@
           <div class="mini-note" id="liveDate">Cargando fecha…</div>
         </div>
         <div class="mini-note">
-          <strong>Reglas activas del beta:</strong><br>
+          <strong>Reglas activas del sistema:</strong><br>
           Categoría A de 08:10 a 08:20 · Categoría B de 08:21 a 08:30 · Categoría C desde 08:31.<br>
           El conteo se acumula por mes calendario.
         </div>
@@ -1937,24 +1985,11 @@
           </div>
         </div>
 
-        <div class="rule-box">
-          <strong>Lógica del beta</strong>
-          <ul>
-            <li>La hora se obtiene automáticamente del sistema.</li>
-            <li>El cruce se hace con la base demo de estudiantes.</li>
-            <li>Si el alumno ya fue registrado hoy, se bloquea el duplicado.</li>
-            <li>La alerta aparece cuando supera 3 atrasos en el mes.</li>
-            <li>El envío de correo está simulado en esta etapa.</li>
-            <li>Los reseteos individuales quedan registrados con fecha, hora y usuario.</li>
-            <li>El cierre mensual automático a inspectoría se simula en esta demo.</li>
-          </ul>
+        <div class="footer-note">
+          Indicadores del día y del período actual para apoyar el seguimiento de atrasos por nivel y curso.
         </div>
 
         <div class="stats-grid" id="statsGrid"></div>
-
-        <div class="footer-note">
-          Los movimientos del mes siguen guardándose localmente en esta etapa, pero la nómina de alumnos ya se carga desde Google Sheets.
-        </div>
       </aside>
     </section>
 
@@ -1975,11 +2010,11 @@
               <th>Curso</th>
               <th>Estado</th>
               <th>Categoría</th>
-              <th>Correo</th>
+              <th>Registrado por</th>
             </tr>
           </thead>
           <tbody id="todayTableBody">
-            <tr><td colspan="7" class="empty">Todavía no hay registros hoy.</td></tr>
+            <tr><td colspan="7" class="empty">Todavía no hay marcajes hoy.</td></tr>
           </tbody>
         </table>
       </div>
@@ -1995,13 +2030,13 @@
       <div class="panel-header">
         <div>
           <h2 class="panel-title">Informe mensual · alumnos con 3 o más atrasos vigentes</h2>
-          <p class="panel-sub">Exporta el informe en formato Excel y simula la notificación final del período activo. Haz click en un correo para copiarlo al portapapeles.</p>
+          <p class="panel-sub">Exporta el informe en formato Excel y gestiona las notificaciones del período activo. Haz clic en el buzón para copiar el correo al portapapeles.</p>
         </div>
       </div>
 
       <div class="report-actions">
         <button class="btn btn-secondary" id="exportEmailsButton">Exportar Excel</button>
-        <button class="btn btn-primary" id="simulateSendButton">Enviar notificación simulada</button>
+        <button class="btn btn-primary" id="simulateSendButton">Enviar notificación a estudiantes</button>
       </div>
 
       <div class="status info show" id="reportStatusBox">
@@ -2015,10 +2050,10 @@
               <th>Alumno</th>
               <th>RUT completo</th>
               <th>Curso</th>
+              <th>Teléfono</th>
               <th>Correo</th>
               <th>Vigentes</th>
-              <th>Histórico mes</th>
-              <th>Detalle vigente</th>
+              <th>Histórico</th>
               <th>Notificación</th>
             </tr>
           </thead>
@@ -2087,9 +2122,9 @@
         </table>
       </div>
 
-      <h3 class="subsection-title">Despachos mensuales simulados a inspectoría</h3>
+      <h3 class="subsection-title">Despachos mensuales a inspectoría</h3>
       <div class="status info show" id="automationStatusBox">
-        El sistema genera automáticamente un despacho mensual simulado para <strong>inspectoria@becarb.cl</strong> cuando detecta un cierre de mes pendiente.
+        El sistema genera automáticamente un despacho mensual para <strong>inspectoria@becarb.cl</strong> cuando detecta un cierre de mes pendiente.
       </div>
 
       <div class="table-wrap">
@@ -2105,7 +2140,7 @@
             </tr>
           </thead>
           <tbody id="automationTableBody">
-            <tr><td colspan="6" class="empty">Todavía no hay despachos mensuales simulados.</td></tr>
+            <tr><td colspan="6" class="empty">Todavía no hay despachos mensuales registrados.</td></tr>
           </tbody>
         </table>
       </div>
@@ -2654,8 +2689,8 @@
         studentCard.classList.remove('show');
       } else {
         heroTitle.textContent = 'Ingreso rápido por RUT o QR, con hora automática del sistema.';
-        heroParagraph.textContent = 'Esta versión de demostración simula el flujo de portería: lectura de RUT sin dígito verificador, cruce con la base de estudiantes, bloqueo de duplicados en el día, conteo mensual de atrasos y preparación del informe final con notificación simulada al correo del alumno.';
-        if (heroTag) heroTag.textContent = 'Beta demo · Control de atrasos';
+        heroParagraph.textContent = 'Registro rápido por RUT o QR, con hora automática del sistema, control de duplicados diarios y consulta institucional de reportes.';
+        if (heroTag) heroTag.textContent = 'Sistema de Control de Atrasos · v1.1';
       }
     };
 
@@ -3099,22 +3134,34 @@
     };
 
     const renderStats = () => {
+      const buildStatsMarkup = (stats) =>
+        stats.map(([label, value]) => {
+          const isText = typeof value === 'string';
+          return `
+          <div class="stat">
+            <div class="k">${label}</div>
+            <div class="v ${isText ? 'text-value' : ''}">${value}</div>
+          </div>
+        `;
+        }).join('');
+
       if (dashboardSummary) {
+        const topOverall = dashboardSummary.top_course_overall || {};
+        const topBasica = dashboardSummary.top_course_basica || {};
+        const topMedia = dashboardSummary.top_course_media || {};
+        const topPrebasica = dashboardSummary.top_course_prebasica || {};
+
         const stats = [
           ['Ingresos hoy', dashboardSummary.ingresos_hoy ?? 0],
           ['Atrasos del mes', dashboardSummary.atrasos_mes ?? 0],
-          ['Categoría A', dashboardSummary.categoria_a ?? 0],
-          ['Categoría B', dashboardSummary.categoria_b ?? 0],
-          ['Categoría C', dashboardSummary.categoria_c ?? 0],
-          ['Alumnos con 3 o más', dashboardSummary.alumnos_sobre_3 ?? 0]
+          ['Alumnos con 3 o más', dashboardSummary.alumnos_sobre_3 ?? 0],
+          ['+ atrasos básica', topBasica.count ? `${topBasica.course} · ${topBasica.count}` : 'Sin datos'],
+          ['+ atrasos media', topMedia.count ? `${topMedia.course} · ${topMedia.count}` : 'Sin datos'],
+          ['+ atrasos prebásica', topPrebasica.count ? `${topPrebasica.course} · ${topPrebasica.count}` : 'Sin datos'],
+          ['Curso más atrasado hoy', topOverall.count ? `${topOverall.course} · ${topOverall.count}` : 'Sin datos']
         ];
 
-        statsGrid.innerHTML = stats.map(([label, value]) => `
-          <div class="stat">
-            <div class="k">${label}</div>
-            <div class="v">${value}</div>
-          </div>
-        `).join('');
+        statsGrid.innerHTML = buildStatsMarkup(stats);
         return;
       }
 
@@ -3122,30 +3169,36 @@
       const monthKey = getMonthKeyFromDate(new Date());
       const today = getTodayRecords(state);
       const historicalMonthlyLates = getLateRecordsForMonth(state, monthKey);
-      const operationalMonthlyLates = getOperationalLateRecordsForMonth(state, monthKey);
-      const a = operationalMonthlyLates.filter((record) => record.categoria === 'A').length;
-      const b = operationalMonthlyLates.filter((record) => record.categoria === 'B').length;
-      const c = operationalMonthlyLates.filter((record) => record.categoria === 'C').length;
       const alertCount = getMonthlyReport(state, monthKey).length;
-      const resetCount = state.resetLog.filter((entry) => entry.monthKey === monthKey).length;
+
+      const courseCounter = (levelMatcher) => {
+        const map = new Map();
+        today.forEach((record) => {
+          if (!record.curso || !levelMatcher(record.curso)) return;
+          map.set(record.curso, (map.get(record.curso) || 0) + 1);
+        });
+        const first = [...map.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'es'))[0];
+        return first ? `${first[0]} · ${first[1]}` : 'Sin datos';
+      };
+
+      const overallMap = new Map();
+      today.forEach((record) => {
+        if (!record.curso) return;
+        overallMap.set(record.curso, (overallMap.get(record.curso) || 0) + 1);
+      });
+      const overallFirst = [...overallMap.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'es'))[0];
 
       const stats = [
         ['Ingresos hoy', today.length],
-        ['Atrasos vigentes', operationalMonthlyLates.length],
-        ['Históricos del mes', historicalMonthlyLates.length],
-        ['Categoría A', a],
-        ['Categoría B', b],
-        ['Categoría C', c],
-        ['Alumnos con 3+', alertCount],
-        ['Reseteos del mes', resetCount]
+        ['Atrasos del mes', historicalMonthlyLates.length],
+        ['Alumnos con 3 o más', alertCount],
+        ['+ atrasos básica', courseCounter((course) => normalizeRole(course).includes('basico'))],
+        ['+ atrasos media', courseCounter((course) => normalizeRole(course).includes('medio'))],
+        ['+ atrasos prebásica', courseCounter((course) => normalizeRole(course).includes('kinder') || normalizeRole(course).includes('prek') || normalizeRole(course).includes('parv'))],
+        ['Curso más atrasado hoy', overallFirst ? `${overallFirst[0]} · ${overallFirst[1]}` : 'Sin datos']
       ];
 
-      statsGrid.innerHTML = stats.map(([label, value]) => `
-        <div class="stat">
-          <div class="k">${label}</div>
-          <div class="v">${value}</div>
-        </div>
-      `).join('');
+      statsGrid.innerHTML = buildStatsMarkup(stats);
     };
 
     const renderTodayTable = () => {
@@ -3166,7 +3219,7 @@
 
       const rows = getTodayRecords(loadState());
       if (!rows.length) {
-        todayTableBody.innerHTML = '<tr><td colspan="7" class="empty">Todavía no hay registros hoy.</td></tr>';
+        todayTableBody.innerHTML = '<tr><td colspan="7" class="empty">Todavía no hay marcajes hoy.</td></tr>';
         return;
       }
 
@@ -3202,19 +3255,19 @@
         const fullName = `${item.nombres || ''} ${item.apellidos || ''}`.trim();
         const email = item.email || '';
         const emailButton = email
-          ? `<button class="table-action email-copy" type="button" data-email="${email}" title="Copiar correo">${email}</button>`
-          : '—';
+          ? `<button class="mail-copy-btn" type="button" data-email="${escapeHtml(email)}" title="${escapeHtml(email)}">✉</button>`
+          : '<button class="mail-copy-btn" type="button" disabled data-email="Sin correo registrado">✉</button>';
 
         return `
         <tr>
           <td>${fullName}</td>
           <td>${item.rut_completo || ''}</td>
           <td>${item.curso || ''}</td>
+          <td>${item.telefon || '—'}</td>
           <td>${emailButton}</td>
           <td><span class="pill alert">${item.current_month_count || 0}</span></td>
           <td>${item.total_historic_count || 0}</td>
-          <td>Desde 3 atrasos vigentes corresponde notificar.</td>
-          <td>${sent ? 'Simulada ' + formatDateTimeShort(sent.sentAt) : 'Pendiente'}</td>
+          <td>${sent ? 'Actualizada ' + formatDateTimeShort(sent.sentAt) : 'Pendiente'}</td>
         </tr>`;
       }).join('');
 
@@ -3248,9 +3301,9 @@
       const rows = [...state.autoReports].sort((a, b) => (a.generatedAt < b.generatedAt ? 1 : -1));
 
       if (!rows.length) {
-        automationTableBody.innerHTML = '<tr><td colspan="6" class="empty">Todavía no hay despachos mensuales simulados.</td></tr>';
+        automationTableBody.innerHTML = '<tr><td colspan="6" class="empty">Todavía no hay despachos mensuales registrados.</td></tr>';
         automationStatusBox.className = 'status info show';
-        automationStatusBox.innerHTML = `El sistema generará el envío mensual simulado a <strong>${INSPECTORIA_EMAIL}</strong> cuando detecte un cierre pendiente con registros del mes anterior.`;
+        automationStatusBox.innerHTML = `El sistema generará el envío mensual a <strong>${INSPECTORIA_EMAIL}</strong> cuando detecte un cierre pendiente con registros del mes anterior.`;
         return;
       }
 
@@ -3270,7 +3323,7 @@
       `).join('');
 
       automationStatusBox.className = 'status show success';
-      automationStatusBox.innerHTML = `Se han generado <strong>${rows.length}</strong> despacho(s) mensual(es) simulados para inspectoría.`;
+      automationStatusBox.innerHTML = `Se han generado <strong>${rows.length}</strong> despacho(s) mensual(es) para inspectoría.`;
     };
 
     const downloadSelectedPeriodReport = () => {
@@ -3886,7 +3939,7 @@
   </table>
 
   <footer class="site-footer">
-    Control de Atrasos - Desarrollado por
+    Control de Atrasos v1.1 - Desarrollado por
     <a href="https://ampliadesign.cl" target="_blank" rel="noopener noreferrer">ampliadesign.cl</a>
   </footer>
 
@@ -3911,7 +3964,7 @@
 
       if (!report.length) {
         reportStatusBox.className = 'status info show';
-        reportStatusBox.innerHTML = 'No hay alumnos desde 3 atrasos vigentes, así que no hay notificación que simular.';
+        reportStatusBox.innerHTML = 'No hay alumnos desde 3 atrasos vigentes para notificar en este momento.';
         return;
       }
 
@@ -3927,7 +3980,7 @@
       saveState({ ...state, notifications });
       renderReport();
       reportStatusBox.className = 'status show success';
-      reportStatusBox.innerHTML = `Se simuló el envío de notificación para <strong>${report.length}</strong> alumno(s).`;
+      reportStatusBox.innerHTML = `Se actualizó el estado de notificación para <strong>${report.length}</strong> alumno(s).`;
     };
 
     const buildMonthlyFullReportAttachment = (state, monthKey) => {
@@ -3974,7 +4027,7 @@
 
       saveState({ ...state, autoReports });
       automationStatusBox.className = 'status show success';
-      automationStatusBox.innerHTML = `Se generó automáticamente el despacho simulado del período <strong>${monthLabelFromKey(targetMonthKey)}</strong> para inspectoría.`;
+      automationStatusBox.innerHTML = `Se generó automáticamente el despacho del período <strong>${monthLabelFromKey(targetMonthKey)}</strong> para inspectoría.`;
     };
 
     const downloadAutoReportAttachment = (monthKey) => {
@@ -3989,7 +4042,7 @@
       const excelHtml = buildMonthlyFullReportAttachment(state, monthKey);
       downloadBlobFile(excelHtml, report.attachmentName, 'application/vnd.ms-excel;charset=utf-8;');
       automationStatusBox.className = 'status show success';
-      automationStatusBox.innerHTML = `Se descargó el adjunto simulado correspondiente a <strong>${monthLabelFromKey(monthKey)}</strong>.`;
+      automationStatusBox.innerHTML = `Se descargó el adjunto correspondiente a <strong>${monthLabelFromKey(monthKey)}</strong>.`;
     };
 
     const openResetStudentModal = () => {
@@ -4262,7 +4315,7 @@
   </script>
 
   <footer class="site-footer">
-    Control de Atrasos - Desarrollado por
+    Control de Atrasos v1.1 - Desarrollado por
     <a href="https://ampliadesign.cl" target="_blank" rel="noopener noreferrer">ampliadesign.cl</a>
   </footer>
 
