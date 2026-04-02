@@ -22,6 +22,28 @@ function pad(n: number) {
   return String(n).padStart(2, "0");
 }
 
+function fixMojibake(value: unknown) {
+  let text = String(value ?? "");
+  if (!text) return "";
+  const suspicious = /Ã.|Â|Ð|¤|�/u.test(text);
+  if (suspicious) {
+    try {
+      const bytes = Uint8Array.from(Array.from(text, (ch) => ch.charCodeAt(0) & 0xff));
+      const decoded = new TextDecoder("utf-8").decode(bytes);
+      if (decoded && decoded !== text && !decoded.includes("�")) {
+        text = decoded;
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return text.normalize("NFC");
+}
+
+function cleanText(value: unknown) {
+  return fixMojibake(value).replace(/\s+/g, " ").trim();
+}
+
 async function validateRequestSession(request: Request) {
   const sessionUrl = new URL("/api/session", request.url);
   const response = await fetch(sessionUrl.toString(), {
@@ -73,26 +95,94 @@ export async function GET(request: Request) {
       return NextResponse.json({ ok: false, message: "No se pudo generar el informe mensual." }, { status: 500 });
     }
 
-    const rows = (data || [])
-      .filter((row: any) => row.students && row.students.activo !== false)
-      .map((row: any) => ({
-        rut_base: row.students?.rut_base || "",
-        rut_completo: row.students?.rut_completo || "",
-        alumno: `${row.students?.nombres || ""} ${row.students?.apellidos || ""}`.trim(),
-        curso: row.students?.curso || "",
-        telefon: row.students?.telefon || "",
-        email: row.students?.email || "",
-        atrasos_vigentes: row.current_month_count || 0,
-        atrasos_historicos: row.total_historic_count || 0,
+    const uniqueByRut = new Map<string, {
+      rut_base: string;
+      rut_completo: string;
+      alumno: string;
+      curso: string;
+      telefon: string;
+      email: string;
+      atrasos_vigentes: number;
+      atrasos_historicos: number;
+      periodo: string;
+    }>();
+
+    (data || []).forEach((row: any) => {
+      const student = row.students;
+      if (!student || student.activo === false) return;
+      const rutBase = String(student.rut_base || "").replace(/\D/g, "");
+      if (!rutBase) return;
+
+      const candidate = {
+        rut_base: rutBase,
+        rut_completo: cleanText(student.rut_completo || rutBase),
+        alumno: cleanText(`${student.nombres || ""} ${student.apellidos || ""}`.trim()),
+        curso: cleanText(student.curso || ""),
+        telefon: cleanText(student.telefon || ""),
+        email: cleanText(String(student.email || "").trim().toLowerCase()),
+        atrasos_vigentes: Number(row.current_month_count || 0),
+        atrasos_historicos: Number(row.total_historic_count || 0),
         periodo: `${year}-${pad(month)}`,
-      }))
+      };
+
+      const existing = uniqueByRut.get(rutBase);
+      if (!existing) {
+        uniqueByRut.set(rutBase, candidate);
+        return;
+      }
+
+      const candidateScore = candidate.atrasos_vigentes * 100000 + candidate.atrasos_historicos;
+      const existingScore = existing.atrasos_vigentes * 100000 + existing.atrasos_historicos;
+      if (candidateScore > existingScore) {
+        uniqueByRut.set(rutBase, candidate);
+      }
+    });
+
+    const rows = [...uniqueByRut.values()]
       .sort((a, b) =>
         b.atrasos_vigentes - a.atrasos_vigentes ||
         b.atrasos_historicos - a.atrasos_historicos ||
         a.alumno.localeCompare(b.alumno, "es")
       );
 
-    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const worksheet = XLSX.utils.json_to_sheet(rows, {
+      header: [
+        "rut_base",
+        "rut_completo",
+        "alumno",
+        "curso",
+        "telefon",
+        "email",
+        "atrasos_vigentes",
+        "atrasos_historicos",
+        "periodo",
+      ],
+    });
+
+    XLSX.utils.sheet_add_aoa(worksheet, [[
+      "RUT base",
+      "RUT completo",
+      "Alumno",
+      "Curso",
+      "Teléfono",
+      "Correo",
+      "Atrasos vigentes",
+      "Atrasos históricos",
+      "Período",
+    ]], { origin: "A1" });
+
+    worksheet["!cols"] = [
+      { wch: 14 },
+      { wch: 16 },
+      { wch: 34 },
+      { wch: 18 },
+      { wch: 18 },
+      { wch: 34 },
+      { wch: 18 },
+      { wch: 20 },
+      { wch: 12 },
+    ];
+
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Alumnos 3+");
     const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });

@@ -1127,6 +1127,83 @@
     .modal-footer .btn { min-width: 210px; }
 
 
+    .report-contact-button {
+      position: relative;
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      border: 1px solid rgba(29,116,183,0.16);
+      background: linear-gradient(180deg, #ffffff, #eef6fd);
+      color: var(--becarb-deep);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 10px 20px rgba(16, 36, 62, 0.08);
+      transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+    }
+
+    .report-contact-button:hover,
+    .report-contact-button:focus-visible {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 24px rgba(16, 36, 62, 0.12);
+      border-color: rgba(29,116,183,0.26);
+    }
+
+    .report-contact-button svg {
+      width: 18px;
+      height: 18px;
+      display: block;
+      pointer-events: none;
+    }
+
+    .report-contact-pill {
+      position: absolute;
+      right: calc(100% + 10px);
+      top: 50%;
+      transform: translateY(-50%) scale(0.98);
+      background: rgba(29, 36, 48, 0.96);
+      color: #fff;
+      border-radius: 999px;
+      padding: 9px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+      box-shadow: 0 14px 30px rgba(10, 18, 28, 0.24);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.16s ease, transform 0.16s ease;
+      pointer-events: none;
+      z-index: 5;
+      max-width: min(72vw, 320px);
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .report-contact-button:hover .report-contact-pill,
+    .report-contact-button:focus-visible .report-contact-pill {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(-50%) scale(1);
+    }
+
+    .report-phone-cell {
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.01em;
+      word-break: break-word;
+      min-width: 140px;
+    }
+
+    .report-pagination {
+      margin-top: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+
     @media (max-width: 720px) {
       .manual-modal-grid {
         grid-template-columns: 1fr;
@@ -2000,7 +2077,7 @@
       <div class="panel-header">
         <div>
           <h2 class="panel-title">Informe mensual · alumnos con 3 o más atrasos vigentes</h2>
-          <p class="panel-sub">Exporta el informe en formato Excel y gestiona la notificación del período activo. Haz click en un correo para copiarlo al portapapeles.</p>
+          <p class="panel-sub">Exporta el informe completo del período activo, visualiza el teléfono de contacto y usa el buzón para copiar el correo del estudiante al portapapeles.</p>
         </div>
       </div>
 
@@ -2020,6 +2097,7 @@
               <th>Alumno</th>
               <th>RUT completo</th>
               <th>Curso</th>
+              <th>Teléfono</th>
               <th>Correo</th>
               <th>Vigentes</th>
               <th>Histórico mes</th>
@@ -2027,9 +2105,15 @@
             </tr>
           </thead>
           <tbody id="reportTableBody">
-            <tr><td colspan="7" class="empty">Aún no hay alumnos con 3 o más atrasos vigentes en este mes.</td></tr>
+            <tr><td colspan="8" class="empty">Aún no hay alumnos con 3 o más atrasos vigentes en este mes.</td></tr>
           </tbody>
         </table>
+      </div>
+
+      <div class="report-pagination" id="reportPagination" hidden>
+        <button class="btn btn-secondary" type="button" id="reportPrevButton">← Anterior</button>
+        <div class="mini-note" id="reportPageLabel">Página 1 de 1</div>
+        <button class="btn btn-secondary" type="button" id="reportNextButton">Siguiente →</button>
       </div>
     </section>
     <section class="panel admin-only" id="periodExportPanel">
@@ -2240,6 +2324,8 @@
     let resetLogsData = [];
     let alertStudentsData = [];
     let reportPeriodsData = [];
+    let reportPage = 1;
+    const REPORT_PAGE_SIZE = 10;
 
     const DEFAULT_USER = '';
     const LOGIN_STORAGE_KEY = 'becarb-atrasos-session:auth';
@@ -2289,6 +2375,10 @@
     const todayTableBody = document.getElementById('todayTableBody');
     const reportTableBody = document.getElementById('reportTableBody');
     const reportStatusBox = document.getElementById('reportStatusBox');
+    const reportPagination = document.getElementById('reportPagination');
+    const reportPrevButton = document.getElementById('reportPrevButton');
+    const reportNextButton = document.getElementById('reportNextButton');
+    const reportPageLabel = document.getElementById('reportPageLabel');
     const exportEmailsButton = document.getElementById('exportEmailsButton');
     const simulateSendButton = document.getElementById('simulateSendButton');
     const reportPeriodSelect = document.getElementById('reportPeriodSelect');
@@ -2631,9 +2721,11 @@
         }
 
         alertStudentsData = Array.isArray(result.students) ? result.students : [];
+        reportPage = 1;
         return true;
       } catch (error) {
         alertStudentsData = [];
+        reportPage = 1;
         console.error('Error cargando alumnos con alerta:', error);
         return false;
       }
@@ -3202,34 +3294,65 @@
       `).join('');
     };
 
+
+    const renderReportPagination = (totalItems) => {
+      const totalPages = Math.max(1, Math.ceil(totalItems / REPORT_PAGE_SIZE));
+      if (!reportPagination || !reportPrevButton || !reportNextButton || !reportPageLabel) return;
+      reportPagination.hidden = totalItems <= REPORT_PAGE_SIZE;
+      reportPrevButton.disabled = reportPage <= 1;
+      reportNextButton.disabled = reportPage >= totalPages;
+      reportPageLabel.textContent = `Página ${Math.min(reportPage, totalPages)} de ${totalPages}`;
+    };
+
+    const buildReportEmailButton = (email) => {
+      if (!email) return '—';
+      const safeEmail = escapeHtml(displayText(email));
+      return `
+        <button class="report-contact-button email-copy" type="button" data-email="${safeEmail}" aria-label="Copiar correo ${safeEmail}" title="Copiar correo">
+          <span class="report-contact-pill">${safeEmail}</span>
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M4 7.5A1.5 1.5 0 0 1 5.5 6h13A1.5 1.5 0 0 1 20 7.5v9A1.5 1.5 0 0 1 18.5 18h-13A1.5 1.5 0 0 1 4 16.5v-9Z" stroke="currentColor" stroke-width="1.7"/>
+            <path d="m5 7 7 5 7-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>`;
+    };
+
     const renderReport = () => {
       const state = loadState();
       const monthKey = getMonthKeyFromDate(new Date());
       const notifications = Array.isArray(state.notifications) ? state.notifications : [];
       const report = [...alertStudentsData]
-        .sort((a, b) => (b.current_month_count || 0) - (a.current_month_count || 0) || `${a.nombres || ''} ${a.apellidos || ''}`.localeCompare(`${b.nombres || ''} ${b.apellidos || ''}`));
+        .sort((a, b) => (b.current_month_count || 0) - (a.current_month_count || 0) || `${a.nombres || ''} ${a.apellidos || ''}`.localeCompare(`${b.nombres || ''} ${b.apellidos || ''}`, 'es'));
 
       if (!report.length) {
-        reportTableBody.innerHTML = '<tr><td colspan="7" class="empty">Aún no hay alumnos con 3 o más atrasos vigentes en este mes.</td></tr>';
+        reportPage = 1;
+        if (reportPagination) reportPagination.hidden = true;
+        reportTableBody.innerHTML = '<tr><td colspan="8" class="empty">Aún no hay alumnos con 3 o más atrasos vigentes en este mes.</td></tr>';
         reportStatusBox.className = 'status info show';
         reportStatusBox.innerHTML = 'El informe toma el mes actual del sistema y reúne a los alumnos que acumulan 3 o más atrasos vigentes.';
         return;
       }
 
-      reportTableBody.innerHTML = report.map((item) => {
+      const totalPages = Math.max(1, Math.ceil(report.length / REPORT_PAGE_SIZE));
+      if (reportPage > totalPages) reportPage = totalPages;
+      if (reportPage < 1) reportPage = 1;
+      const startIndex = (reportPage - 1) * REPORT_PAGE_SIZE;
+      const visibleRows = report.slice(startIndex, startIndex + REPORT_PAGE_SIZE);
+
+      reportTableBody.innerHTML = visibleRows.map((item) => {
         const sent = notifications.find((entry) => entry.rut_base === item.rut_base && entry.monthKey === monthKey) || null;
-        const fullName = displayText(`${item.nombres || ''} ${item.apellidos || ''}`.trim());
-        const courseName = displayText(item.curso || '');
-        const email = displayText(item.email || '');
-        const emailButton = email
-          ? `<button class="table-action email-copy" type="button" data-email="${email}" title="Copiar correo">${email}</button>`
-          : '—';
+        const fullName = escapeHtml(displayText(`${item.nombres || ''} ${item.apellidos || ''}`.trim()));
+        const courseName = escapeHtml(displayText(item.curso || ''));
+        const phone = escapeHtml(displayText(item.telefon || ''));
+        const fullRut = escapeHtml(displayText(item.rut_completo || ''));
+        const emailButton = buildReportEmailButton(item.email || '');
 
         return `
         <tr>
           <td>${fullName}</td>
-          <td>${item.rut_completo || ''}</td>
+          <td>${fullRut}</td>
           <td>${courseName}</td>
+          <td class="report-phone-cell">${phone || '—'}</td>
           <td>${emailButton}</td>
           <td><span class="pill alert">${item.current_month_count || 0}</span></td>
           <td>${item.total_historic_count || 0}</td>
@@ -3237,9 +3360,11 @@
         </tr>`;
       }).join('');
 
+      renderReportPagination(report.length);
       reportStatusBox.className = 'status show error';
       reportStatusBox.innerHTML = `Hay <span class="strong-danger">${report.length}</span> alumno(s) con 3 o más atrasos vigentes en el mes actual.`;
     };
+
 
     const renderResetLog = () => {
       const rows = [...resetLogsData].sort((a, b) => (a.reset_at < b.reset_at ? 1 : -1));
@@ -4118,6 +4243,24 @@
         resetStudentError.classList.add('show');
       }
     };
+
+
+    if (reportPrevButton) {
+      reportPrevButton.addEventListener('click', () => {
+        if (reportPage <= 1) return;
+        reportPage -= 1;
+        renderReport();
+      });
+    }
+
+    if (reportNextButton) {
+      reportNextButton.addEventListener('click', () => {
+        const totalPages = Math.max(1, Math.ceil((alertStudentsData || []).length / REPORT_PAGE_SIZE));
+        if (reportPage >= totalPages) return;
+        reportPage += 1;
+        renderReport();
+      });
+    }
 
     exportEmailsButton.addEventListener('click', exportEmails);
     simulateSendButton.addEventListener('click', simulateSend);
